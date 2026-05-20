@@ -138,9 +138,54 @@ export async function POST(request: NextRequest) {
       take: 5,
     });
 
-    const recentContext = recentBP?.length
-      ? `\n\nRecent BP readings for reference: ${(recentBP ?? []).map((r: any) => `${r?.date ? new Date(r.date).toLocaleDateString() : 'unknown'} ${r?.date ? new Date(r.date).toLocaleTimeString() : ''}: ${r?.systolic ?? 0}/${r?.diastolic ?? 0} HR:${r?.pulse ?? 'N/A'} (${r?.context ?? ''})`).join(', ')}`
-      : '';
+    // Get current medications for context
+    const activeMeds = await prisma.medication.findMany({
+      where: { isActive: true },
+      orderBy: [{ timeSlot: 'asc' }, { name: 'asc' }],
+    });
+
+    // Get recent medication logs
+    const today = new Date();
+    const threeDaysAgo = new Date(today);
+    threeDaysAgo.setDate(today.getDate() - 3);
+    const recentMedLogs = await prisma.medicationLog.findMany({
+      where: { date: { gte: threeDaysAgo } },
+      orderBy: { date: 'desc' },
+      take: 10,
+    });
+
+    // Get recent observations
+    const recentObs = await prisma.observation.findMany({
+      orderBy: { date: 'desc' },
+      take: 5,
+    });
+
+    let recentContext = '';
+
+    if (recentBP?.length) {
+      recentContext += `\n\nRecent BP readings: ${(recentBP ?? []).map((r: any) => `${r?.date ? new Date(r.date).toLocaleDateString() : 'unknown'} ${r?.date ? new Date(r.date).toLocaleTimeString() : ''}: ${r?.systolic ?? 0}/${r?.diastolic ?? 0} HR:${r?.pulse ?? 'N/A'} (${r?.context ?? ''})`).join(', ')}`;
+    }
+
+    if (activeMeds?.length) {
+      const medsBySlot: Record<string, string[]> = {};
+      for (const med of activeMeds) {
+        const slot = med?.timeSlot ?? 'OTHER';
+        if (!medsBySlot[slot]) medsBySlot[slot] = [];
+        medsBySlot[slot].push(`${med?.name ?? 'Unknown'}${med?.dosage ? ` (${med.dosage})` : ''}${med?.notes ? ` — ${med.notes}` : ''}`);
+      }
+      recentContext += `\n\nCurrent medication schedule:\n${Object.entries(medsBySlot).map(([slot, meds]) => `  ${slot}: ${meds.join(', ')}`).join('\n')}`;
+    }
+
+    if (recentMedLogs?.length) {
+      recentContext += `\n\nRecent medication logs (last 3 days): ${(recentMedLogs ?? []).map((l: any) => {
+        const meds = (() => { try { return JSON.parse(l?.medications ?? '[]'); } catch { return []; } })();
+        return `${l?.date ? new Date(l.date).toLocaleDateString() : 'unknown'} ${l?.timeSlot ?? ''}: ${Array.isArray(meds) ? meds.join(', ') : 'unknown'}${l?.compliance ? ' ✓' : ' ✗'}`;
+      }).join('; ')}`;
+    }
+
+    if (recentObs?.length) {
+      recentContext += `\n\nRecent observations: ${(recentObs ?? []).map((o: any) => `${o?.date ? new Date(o.date).toLocaleDateString() : 'unknown'}: [${o?.category ?? ''}] ${o?.description ?? ''}`).join('; ')}`;
+    }
 
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT + recentContext },
