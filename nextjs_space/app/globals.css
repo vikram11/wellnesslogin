@@ -120,9 +120,5 @@
   border-radius: 9999px;
 }
 
-/* Markdown in chat */
-.chat-markdown p { margin-bottom: 0.5em; }
-.chat-markdown ul, .chat-markdown ol { margin-left: 1.2em; margin-bottom: 0.5em; }
-.chat-markdown li { margin-bottom: 0.25em; }
-.chat-markdown strong { font-weight: 600; }
-.chat-markdown code { background: hsl(var(--muted)); padding: 0.15em 0.35em; border-radius: 4px; font-size: 0.9em; }
+/* Markdown in chat - base reset */
+.chat-markdown { font-size: inherit; line-height: inherit; }

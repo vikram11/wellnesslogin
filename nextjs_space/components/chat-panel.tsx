@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { ChatMarkdown } from '@/components/chat-markdown';
 
 interface Message {
   id: string;
@@ -193,7 +194,11 @@ export function ChatPanel() {
                       : 'bg-card border border-border rounded-bl-md'
                   }`}
                 >
-                  <div className="chat-markdown whitespace-pre-wrap">{msg?.content || (msg?.role === 'assistant' && isLoading ? '' : '')}</div>
+                  {msg?.role === 'assistant' ? (
+                    <ChatMarkdown content={msg?.content ?? ''} />
+                  ) : (
+                    <div className="whitespace-pre-wrap">{msg?.content ?? ''}</div>
+                  )}
                   {msg?.role === 'assistant' && !msg?.content && isLoading && (
                     <div className="flex gap-1 py-1">
                       <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
