@@ -1,0 +1,84 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/health_logger/nextjs_space/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model BpReading {
+  id        String   @id @default(cuid())
+  date      DateTime
+  systolic  Int
+  diastolic Int
+  pulse     Int?
+  context   String?  // pre-meds, post-meds, etc.
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+}
+
+model Medication {
+  id        String   @id @default(cuid())
+  name      String
+  dosage    String?
+  timeSlot  String   // AM, MID, PM
+  notes     String?
+  startDate DateTime?
+  endDate   DateTime?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model MedicationLog {
+  id          String   @id @default(cuid())
+  date        DateTime
+  timeSlot    String   // AM, MID, PM
+  medications String   // JSON array of medication names taken
+  compliance  Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
+
+model Observation {
+  id        String   @id @default(cuid())
+  date      DateTime
+  category  String   // symptom, appointment, medication_change, activity, protocol, bp_note
+  description String
+  severity  Int?     // for pain scale 1-10
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([category])
+}
+
+model DailyNote {
+  id        String   @id @default(cuid())
+  date      DateTime
+  note      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  role      String   // user or assistant
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

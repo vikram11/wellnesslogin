@@ -1,0 +1,135 @@
+export const dynamic = 'force-dynamic';
+
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const days = body?.days ?? 1;
+    const recipientEmail = body?.recipientEmail ?? '';
+
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
+
+    // Gather data
+    const readings = await prisma.bpReading.findMany({
+      where: { date: { gte: fromDate } },
+      orderBy: { date: 'asc' },
+    });
+
+    const medLogs = await prisma.medicationLog.findMany({
+      where: { date: { gte: fromDate } },
+      orderBy: { date: 'desc' },
+    });
+
+    const observations = await prisma.observation.findMany({
+      where: { date: { gte: fromDate } },
+      orderBy: { date: 'desc' },
+    });
+
+    const notes = await prisma.dailyNote.findMany({
+      where: { date: { gte: fromDate } },
+      orderBy: { date: 'desc' },
+    });
+
+    // Build HTML email
+    const bpRows = (readings ?? []).map((r: any) => {
+      const d = r?.date ? new Date(r.date) : new Date();
+      return `<tr>
+        <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${d.toLocaleDateString()}</td>
+        <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+        <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;">${r?.systolic ?? 0}/${r?.diastolic ?? 0}</td>
+        <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${r?.pulse ?? '—'}</td>
+        <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${r?.context ?? ''}</td>
+      </tr>`;
+    }).join('');
+
+    const avgSys = (readings?.length ?? 0) > 0 ? Math.round((readings ?? []).reduce((s: number, r: any) => s + (r?.systolic ?? 0), 0) / (readings?.length ?? 1)) : 'N/A';
+    const avgDia = (readings?.length ?? 0) > 0 ? Math.round((readings ?? []).reduce((s: number, r: any) => s + (r?.diastolic ?? 0), 0) / (readings?.length ?? 1)) : 'N/A';
+
+    const obsHtml = (observations ?? []).map((o: any) => {
+      const d = o?.date ? new Date(o.date) : new Date();
+      return `<li style="margin-bottom:6px;"><strong>${d.toLocaleDateString()}</strong> [${o?.category ?? ''}]: ${o?.description ?? ''}</li>`;
+    }).join('');
+
+    const notesHtml = (notes ?? []).map((n: any) => {
+      const d = n?.date ? new Date(n.date) : new Date();
+      return `<li style="margin-bottom:6px;"><strong>${d.toLocaleDateString()}</strong>: ${n?.note ?? ''}</li>`;
+    }).join('');
+
+    const periodLabel = days === 1 ? 'Daily' : `${days}-Day`;
+
+    const htmlBody = `
+      <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;color:#1a1a2e;">
+        <div style="background:#0d9488;padding:20px 24px;border-radius:8px 8px 0 0;">
+          <h1 style="color:white;margin:0;font-size:22px;">💚 Amma's ${periodLabel} Health Summary</h1>
+          <p style="color:#ccfbf1;margin:6px 0 0;font-size:14px;">Period: ${fromDate.toLocaleDateString()} — ${new Date().toLocaleDateString()}</p>
+        </div>
+
+        <div style="padding:24px;background:#f8fffe;border:1px solid #e0f2f1;">
+          <h2 style="color:#0d9488;font-size:18px;margin-top:0;">📊 Blood Pressure Overview</h2>
+          <p style="font-size:14px;">Readings: <strong>${readings?.length ?? 0}</strong> | Avg: <strong>${avgSys}/${avgDia}</strong></p>
+          
+          ${(readings?.length ?? 0) > 0 ? `
+          <table style="width:100%;border-collapse:collapse;font-size:13px;margin:12px 0;">
+            <thead><tr style="background:#e0f2f1;">
+              <th style="padding:8px;text-align:left;">Date</th>
+              <th style="padding:8px;text-align:left;">Time</th>
+              <th style="padding:8px;text-align:left;">BP</th>
+              <th style="padding:8px;text-align:left;">HR</th>
+              <th style="padding:8px;text-align:left;">Context</th>
+            </tr></thead>
+            <tbody>${bpRows}</tbody>
+          </table>` : '<p style="color:#888;">No BP readings in this period.</p>'}
+
+          <h2 style="color:#0d9488;font-size:18px;">💊 Medication Compliance</h2>
+          <p style="font-size:14px;">Logs recorded: <strong>${medLogs?.length ?? 0}</strong> | All compliant: <strong>${(medLogs ?? []).every((l: any) => l?.compliance) ? 'Yes ✅' : 'See details'}</strong></p>
+
+          ${(observations?.length ?? 0) > 0 ? `
+          <h2 style="color:#0d9488;font-size:18px;">📝 Observations</h2>
+          <ul style="font-size:14px;padding-left:20px;">${obsHtml}</ul>` : ''}
+
+          ${(notes?.length ?? 0) > 0 ? `
+          <h2 style="color:#0d9488;font-size:18px;">🗒️ Daily Notes</h2>
+          <ul style="font-size:14px;padding-left:20px;">${notesHtml}</ul>` : ''}
+        </div>
+
+        <div style="padding:16px 24px;background:#e0f2f1;border-radius:0 0 8px 8px;font-size:12px;color:#555;">
+          Generated by Amma's Health Logger
+        </div>
+      </div>
+    `;
+
+    const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+    let appName = 'Health Logger';
+    try { appName = new URL(appUrl)?.hostname?.split?.('.')?.[0] ?? 'Health Logger'; } catch {}
+
+    const emailResponse = await fetch('https://apps.abacus.ai/api/sendNotificationEmail', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deployment_token: process.env.ABACUSAI_API_KEY,
+        app_id: process.env.WEB_APP_ID,
+        notification_id: process.env.NOTIF_ID_DAILY_HEALTH_SUMMARY,
+        subject: `Amma's ${periodLabel} Health Summary — ${new Date().toLocaleDateString()}`,
+        body: htmlBody,
+        is_html: true,
+        recipient_email: recipientEmail || 'vikram.rangala+4ygmarps@gmail.com',
+        sender_email: `noreply@${(() => { try { return new URL(appUrl)?.hostname ?? 'localhost'; } catch { return 'localhost'; } })()}`,
+        sender_alias: "Amma's Health Logger",
+      }),
+    });
+
+    const result = await emailResponse?.json?.();
+
+    if (!result?.success && !result?.notification_disabled) {
+      throw new Error(result?.message ?? 'Failed to send email');
+    }
+
+    return NextResponse.json({ success: true, message: 'Email sent successfully' });
+  } catch (error: any) {
+    console.error('Email summary error:', error);
+    return NextResponse.json({ success: false, error: error?.message ?? 'Failed to send email' }, { status: 500 });
+  }
+}
