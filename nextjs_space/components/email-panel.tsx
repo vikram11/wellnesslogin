@@ -69,7 +69,7 @@ export function EmailPanel() {
 
           <div>
             <label className="text-sm font-medium mb-1.5 block">Summary Period</label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {[
                 { value: 1, label: 'Today' },
                 { value: 3, label: '3 Days' },
