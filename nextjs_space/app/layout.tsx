@@ -12,15 +12,15 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mon
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
-  title: "Amma's Health Logger",
-  description: 'A compassionate health tracking chatbot for Amma',
+  title: 'Health Logger',
+  description: 'A compassionate health tracking chatbot',
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
   },
   openGraph: {
-    title: "Amma's Health Logger",
-    description: 'A compassionate health tracking chatbot for Amma',
+    title: 'Health Logger',
+    description: 'A compassionate health tracking chatbot',
     images: ['/og-image.png'],
   },
 }

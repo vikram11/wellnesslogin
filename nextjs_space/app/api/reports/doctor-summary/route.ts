@@ -65,7 +65,7 @@ ${(observations ?? []).map((o: any) => {
           },
           {
             role: 'user',
-            content: `Generate a doctor-ready summary report for patient "Amma" based on the following ${days}-day health data:\n${dataContext}\n\nFormat with these sections:\n- Patient Overview\n- Blood Pressure Summary (include avg, range, trend assessment)\n- Current Medications\n- Medication Compliance\n- Notable Observations\n- Clinical Notes/Recommendations`,
+            content: `Generate a doctor-ready summary report based on the following ${days}-day health data:\n${dataContext}\n\nDo not use any patient names — refer to the patient as "the patient" only in this clinical document context.\n\nFormat with these sections:\n- Patient Overview\n- Blood Pressure Summary (include avg, range, trend assessment)\n- Current Medications\n- Medication Compliance\n- Notable Observations\n- Clinical Notes/Recommendations`,
           },
         ],
         max_tokens: 2000,

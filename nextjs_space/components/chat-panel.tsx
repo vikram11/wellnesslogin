@@ -151,7 +151,7 @@ export function ChatPanel() {
             </div>
             <h2 className="font-display text-xl font-semibold tracking-tight mb-2">Hi there! 👋</h2>
             <p className="text-muted-foreground max-w-sm text-sm">
-              I'm Amma's health logger. Tell me about blood pressure readings, medications taken, symptoms, or anything health-related and I'll keep track of it all.
+              I'm your health logger. Tell me about blood pressure readings, medications taken, symptoms, or anything health-related and I'll keep track of it all.
             </p>
             <div className="mt-6 grid gap-2 w-full max-w-sm">
               {[
@@ -221,7 +221,7 @@ export function ChatPanel() {
             value={input}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e?.target?.value ?? '')}
             onKeyDown={handleKeyDown}
-            placeholder="Tell me about Amma's health today..."
+            placeholder="Tell me about your health today..."
             className="min-h-[44px] max-h-[120px] resize-none text-sm"
             rows={1}
           />

@@ -216,7 +216,7 @@ export function ReportsPanel() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
-            Generate a formatted text summary suitable for sharing with Amma's doctors.
+            Generate a formatted text summary suitable for sharing with your doctors.
           </p>
           <Button onClick={generateDoctorReport} disabled={generatingReport} size="sm">
             {generatingReport ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}

@@ -76,7 +76,7 @@ export function MedicationsPanel() {
     <div className="max-w-5xl mx-auto px-4 py-6 overflow-y-auto h-full chat-scroll">
       <div className="mb-6">
         <h2 className="font-display text-2xl font-semibold tracking-tight">Medications</h2>
-        <p className="text-muted-foreground text-sm">Amma's current medication schedule</p>
+        <p className="text-muted-foreground text-sm">Your current medication schedule</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 mb-6">
