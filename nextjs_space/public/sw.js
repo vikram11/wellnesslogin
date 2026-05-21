@@ -1,4 +1,4 @@
-// Health Logger Service Worker — handles push notifications
+// WellnessLog.in Service Worker — handles push notifications
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -9,7 +9,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'Health Logger', body: 'Time for a check-in!', tag: 'checkin' };
+  let data = { title: 'WellnessLog.in', body: 'Time for a check-in!', tag: 'checkin' };
   try {
     if (event.data) {
       data = { ...data, ...event.data.json() };
@@ -29,7 +29,7 @@ self.addEventListener('push', (event) => {
       url: data.url || '/',
     },
     actions: [
-      { action: 'open', title: 'Open Health Logger' },
+      { action: 'open', title: 'Open WellnessLog.in' },
     ],
   };
 

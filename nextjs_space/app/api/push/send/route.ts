@@ -16,7 +16,7 @@ if (VAPID_PUBLIC && VAPID_PRIVATE) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const title = body?.title ?? 'Health Logger';
+    const title = body?.title ?? 'WellnessLog.in';
     const message = body?.body ?? 'Time for a check-in!';
     const tag = body?.tag ?? 'checkin';
     const url = body?.url ?? '/';

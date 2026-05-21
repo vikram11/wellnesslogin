@@ -1,6 +1,6 @@
-# Health Logger — Self-Hosting Guide (Hostinger VPS)
+# WellnessLog.in — Self-Hosting Guide (Hostinger VPS)
 
-This guide walks you through deploying the Health Logger app on your own Hostinger VPS with your custom domain.
+This guide walks you through deploying the WellnessLog.in app on your own Hostinger VPS with your custom domain.
 
 ---
 
@@ -124,7 +124,7 @@ SMTP_HOST="smtp.gmail.com"
 SMTP_PORT="587"
 SMTP_USER="your-email@gmail.com"
 SMTP_PASS="your-app-password"
-EMAIL_FROM="Health Logger <your-email@gmail.com>"
+EMAIL_FROM="WellnessLog.in <your-email@gmail.com>"
 
 # === APP URL ===
 NEXTAUTH_URL="https://yourdomain.com"
@@ -156,7 +156,7 @@ SMTP_HOST="smtp.gmail.com"        # or your Hostinger mail server
 SMTP_PORT="587"                    # 587 for STARTTLS, 465 for SSL
 SMTP_USER="your-email@gmail.com"
 SMTP_PASS="your-app-password"
-EMAIL_FROM="Health Logger <your-email@gmail.com>"
+EMAIL_FROM="WellnessLog.in <your-email@gmail.com>"
 ```
 
 ### Gmail Setup
@@ -171,7 +171,7 @@ SMTP_HOST="smtp.hostinger.com"
 SMTP_PORT="465"
 SMTP_USER="health@yourdomain.com"
 SMTP_PASS="your-hostinger-email-password"
-EMAIL_FROM="Health Logger <health@yourdomain.com>"
+EMAIL_FROM="WellnessLog.in <health@yourdomain.com>"
 ```
 
 ---

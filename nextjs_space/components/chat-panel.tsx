@@ -261,7 +261,7 @@ export function ChatPanel() {
             </div>
             <h2 className="font-display text-xl font-semibold tracking-tight mb-2">Hi there! 👋</h2>
             <p className="text-muted-foreground max-w-sm text-sm">
-              I'm your health logger. Tell me about blood pressure readings, medications taken, symptoms, or anything health-related and I'll keep track of it all.
+              I'm your wellness companion. Tell me about blood pressure readings, medications taken, symptoms, or anything health-related and I'll keep track of it all.
             </p>
             <p className="text-muted-foreground max-w-sm text-xs mt-2">
               📷 You can also snap a photo of a prescription bottle, lab report, or BP monitor!

@@ -3,9 +3,9 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding database with health log data...');
+  console.log('Seeding database with wellness log data...');
 
-  // BP Readings from the Health Log
+  // BP Readings from WellnessLog
   const bpReadings = [
     { date: new Date('2026-05-11T08:00:00'), systolic: 175, diastolic: 72, pulse: null, context: 'morning', notes: 'First recording' },
     { date: new Date('2026-05-11T20:00:00'), systolic: 151, diastolic: 73, pulse: null, context: 'evening', notes: '' },

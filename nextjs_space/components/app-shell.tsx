@@ -33,7 +33,7 @@ export function AppShell() {
               <span className="text-primary-foreground text-sm font-bold">💚</span>
             </div>
             <div>
-              <h1 className="font-display text-lg font-semibold tracking-tight">Health Logger</h1>
+              <h1 className="font-display text-lg font-semibold tracking-tight">WellnessLog.in</h1>
             </div>
           </div>
           <div className="flex items-center gap-1">

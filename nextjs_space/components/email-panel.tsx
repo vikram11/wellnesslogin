@@ -150,7 +150,7 @@ export function EmailPanel() {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Mail className="w-4 h-4 text-primary" />
-            Send Health Summary
+            Send Wellness Summary
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -12,15 +12,15 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mon
 
 export const metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
-  title: 'Health Logger',
-  description: 'A compassionate health tracking chatbot',
+  title: 'WellnessLog.in',
+  description: 'Your compassionate wellness companion',
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
   },
   openGraph: {
-    title: 'Health Logger',
-    description: 'A compassionate health tracking chatbot',
+    title: 'WellnessLog.in',
+    description: 'Your compassionate wellness companion',
     images: ['/og-image.png'],
   },
 }
@@ -37,7 +37,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#0d9488" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Health Logger" />
+        <meta name="apple-mobile-web-app-title" content="WellnessLog.in" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className={`${dmSans.variable} ${jakartaSans.variable} ${jetbrainsMono.variable} font-sans`}>

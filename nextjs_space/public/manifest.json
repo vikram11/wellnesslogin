@@ -1,7 +1,7 @@
 {
-  "name": "Health Logger",
-  "short_name": "Health Log",
-  "description": "A compassionate health tracking chatbot",
+  "name": "WellnessLog.in",
+  "short_name": "WellnessLog",
+  "description": "A compassionate wellness companion for your family",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fffe",
