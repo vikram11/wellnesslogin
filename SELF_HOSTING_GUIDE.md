@@ -1,320 +1,193 @@
-# WellnessLog.in — Self-Hosting Guide (Hostinger VPS)
+# WellnessLog.in — Deployment Guide (Docker + Caddy)
 
-This guide walks you through deploying the WellnessLog.in app on your own Hostinger VPS with your custom domain.
+Deploys WellnessLog.in on your Hostinger VPS using Docker Compose with Caddy reverse proxy (label-based routing).
 
 ---
 
 ## Prerequisites
 
-- **Hostinger VPS** with Ubuntu 22.04+ (or any Debian-based distro)
-- **Domain** pointed to your VPS IP (A record in Hostinger DNS)
-- **SSH access** to your VPS
-- **Node.js 18+** (LTS recommended)
-- **PostgreSQL 14+** (can be on the same VPS or a managed service)
-- **An OpenAI API key** (or compatible provider — see LLM section below)
+- **Hostinger VPS** at `157.173.222.202` with Docker + Caddy already running
+- **`caddy_network`** Docker network already created
+- **DNS A record**: `wellnesslog.in` → `157.173.222.202` (already done)
+- **MX records**: Still pointing to Hostinger mail servers (for `update@wellnesslog.in`)
 
 ---
 
-## 1. VPS Initial Setup
+## 1. Clone the Repo
 
 ```bash
-# SSH into your VPS
-ssh root@YOUR_VPS_IP
+ssh root@157.173.222.202
 
-# Update system
-apt update && apt upgrade -y
+mkdir -p /opt/apps/wellnesslog
+cd /opt/apps/wellnesslog
 
-# Install Node.js 18 (via NodeSource)
-curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-apt install -y nodejs
-
-# Install Yarn
-npm install -g yarn
-
-# Install PostgreSQL
-apt install -y postgresql postgresql-contrib
-
-# Install Nginx (reverse proxy)
-apt install -y nginx
-
-# Install Certbot for HTTPS
-apt install -y certbot python3-certbot-nginx
-
-# Install PM2 (process manager)
-npm install -g pm2
+git clone -b hostinger https://github.com/vikram11/wellnesslogin.git .
 ```
+
+The app code is inside `nextjs_space/`.
 
 ---
 
-## 2. Set Up PostgreSQL
+## 2. Configure Environment
 
 ```bash
-# Switch to postgres user
-sudo -u postgres psql
-
--- Create database and user
-CREATE USER healthlogger WITH PASSWORD 'your_secure_password_here';
-CREATE DATABASE healthlogger OWNER healthlogger;
-GRANT ALL PRIVILEGES ON DATABASE healthlogger TO healthlogger;
-\q
+cd nextjs_space
+cp .env.production .env
+nano .env
 ```
 
-Your DATABASE_URL will be:
-```
-postgresql://healthlogger:your_secure_password_here@localhost:5432/healthlogger
-```
+Fill in these values:
+
+| Variable | What to do |
+|---|---|
+| `DB_PASSWORD` | Set a strong random password (e.g., `openssl rand -base64 24`) |
+| `OLLAMA_API_KEY` | Already pre-filled |
+| `OLLAMA_MODEL` | Already pre-filled (`gemma4:31b-cloud`) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Generate: `npx web-push generate-vapid-keys` — copy public key |
+| `VAPID_PRIVATE_KEY` | From same command — copy private key |
+| `SMTP_PASS` | Password for `update@wellnesslog.in` (from Hostinger email) |
 
 ---
 
-## 3. Deploy the App
+## 3. Deploy
 
 ```bash
-# Create app directory
-mkdir -p /var/www/health-logger
-cd /var/www/health-logger
+cd /opt/apps/wellnesslog/nextjs_space
 
-# Extract the package (upload health-logger-selfhost.tar.gz first)
-tar xzf /path/to/health-logger-selfhost.tar.gz
+# Build and start
+docker compose up -d --build
 
-# Install dependencies
-yarn install
+# Watch logs during first build (takes a few minutes)
+docker compose logs -f app
+```
 
-# Generate Prisma client
-yarn prisma generate
+Once you see `Ready on http://0.0.0.0:3000`, the app is up.
 
-# Create your .env file
-cp .env.example .env
-nano .env   # Edit with your values (see section 4)
+---
 
-# Push database schema
-yarn prisma db push
+## 4. Initialize Database
 
-# (Optional) Seed initial data
-yarn tsx scripts/seed.ts
+The database schema needs to be pushed on first deploy:
 
-# Build the app
-yarn build
+```bash
+# Run prisma db push inside the running container
+docker compose exec app yarn prisma db push
 
-# Start with PM2
-pm2 start npm --name "health-logger" -- start
-pm2 save
-pm2 startup   # Follow the output command to enable auto-start on reboot
+# (Optional) Seed with sample data
+docker compose exec app yarn tsx scripts/seed.ts
 ```
 
 ---
 
-## 4. Environment Variables (.env)
+## 5. Verify
 
-Create a `.env` file with these values:
+```bash
+# Check containers are running
+docker ps
 
-```env
-# === DATABASE ===
-DATABASE_URL="postgresql://healthlogger:your_secure_password_here@localhost:5432/healthlogger"
+# Verify app is on caddy_network
+docker network inspect caddy_network | grep wellnesslog
 
-# === LLM API (Ollama Cloud — gemma4:31b-cloud with vision) ===
-OLLAMA_API_KEY="your-ollama-api-key"
-
-# === PUSH NOTIFICATIONS ===
-# Generate new VAPID keys: npx web-push generate-vapid-keys
-NEXT_PUBLIC_VAPID_PUBLIC_KEY="your-vapid-public-key"
-VAPID_PRIVATE_KEY="your-vapid-private-key"
-
-# === EMAIL (see section 6) ===
-SMTP_HOST="smtp.gmail.com"
-SMTP_PORT="587"
-SMTP_USER="your-email@gmail.com"
-SMTP_PASS="your-app-password"
-EMAIL_FROM="WellnessLog.in <your-email@gmail.com>"
-
-# === APP URL ===
-NEXTAUTH_URL="https://yourdomain.com"
+# Check Caddy picked up the labels
+docker logs caddy-proxy --tail 50
 ```
+
+Then open **https://wellnesslog.in** in a private/incognito window.
 
 ---
 
-## 5. LLM API — Already Configured for Ollama Cloud
+## 6. Push Notification Cron Jobs
 
-The app is already configured to use **Ollama Cloud** with the `gemma4:31b-cloud` model (which has vision support for image analysis). Both the chat and doctor-summary routes point to `https://ollama.com/v1/chat/completions`.
-
-Just set your `OLLAMA_API_KEY` in the `.env` file and you're good to go.
-
-If you ever want to switch to OpenAI or another provider, change the URL in two files:
-- `app/api/chat/route.ts` (search for `ollama.com/v1`)
-- `app/api/reports/doctor-summary/route.ts` (same search)
-
-### `app/layout.tsx`
-✅ Already done — the platform script tag has been removed.
-
----
-
-## 6. Email — Already Configured with Nodemailer
-
-The app already uses **Nodemailer** for sending health summary emails via SMTP. No code changes needed — just set these env vars:
-
-```env
-SMTP_HOST="smtp.gmail.com"        # or your Hostinger mail server
-SMTP_PORT="587"                    # 587 for STARTTLS, 465 for SSL
-SMTP_USER="your-email@gmail.com"
-SMTP_PASS="your-app-password"
-EMAIL_FROM="WellnessLog.in <your-email@gmail.com>"
-```
-
-### Gmail Setup
-1. Enable 2-Factor Authentication on your Google Account
-2. Go to [App Passwords](https://myaccount.google.com/apppasswords)
-3. Create a new app password → use it as `SMTP_PASS`
-
-### Hostinger Email Setup
-If you set up an email account through your Hostinger domain (e.g., `health@yourdomain.com`):
-```env
-SMTP_HOST="smtp.hostinger.com"
-SMTP_PORT="465"
-SMTP_USER="health@yourdomain.com"
-SMTP_PASS="your-hostinger-email-password"
-EMAIL_FROM="WellnessLog.in <health@yourdomain.com>"
-```
-
----
-
-## 7. Push Notification Cron Jobs
-
-The app has 3 daily push reminders (8 AM, 1 PM, 8 PM Central). On Abacus these were scheduled tasks. On your VPS, set them up as cron jobs:
+The app has 3 daily push reminders. Set up cron on the VPS:
 
 ```bash
 crontab -e
 ```
 
-Add these lines (adjust timezone — the VPS should be set to America/Chicago or use TZ):
+Add:
 ```cron
 # Morning reminder - 8:00 AM Central
-0 8 * * * curl -X POST http://localhost:3000/api/push/send -H "Content-Type: application/json" -d '{"title":"Good Morning! ☀️","body":"Time to log your morning BP and meds."}'
+0 8 * * * docker exec nextjs_space-app-1 wget -q -O- --post-data='{"title":"Good Morning! ☀️","body":"Time to log your morning BP and meds."}' --header='Content-Type: application/json' http://localhost:3000/api/push/send
 
-# Midday reminder - 1:00 PM Central  
-0 13 * * * curl -X POST http://localhost:3000/api/push/send -H "Content-Type: application/json" -d '{"title":"Midday Check-in 🩺","body":"Have you taken your midday medications?"}'
+# Midday reminder - 1:00 PM Central
+0 13 * * * docker exec nextjs_space-app-1 wget -q -O- --post-data='{"title":"Midday Check-in 🩺","body":"Have you taken your midday medications?"}' --header='Content-Type: application/json' http://localhost:3000/api/push/send
 
 # Evening reminder - 8:00 PM Central
-0 20 * * * curl -X POST http://localhost:3000/api/push/send -H "Content-Type: application/json" -d '{"title":"Evening Wrap-up 🌙","body":"Log your evening BP and meds before bed."}'
+0 20 * * * docker exec nextjs_space-app-1 wget -q -O- --post-data='{"title":"Evening Wrap-up 🌙","body":"Log your evening BP and meds before bed."}' --header='Content-Type: application/json' http://localhost:3000/api/push/send
 ```
 
-Set your VPS timezone:
+Set VPS timezone:
 ```bash
 timedatectl set-timezone America/Chicago
 ```
 
----
-
-## 8. Nginx Reverse Proxy + HTTPS
-
-```bash
-nano /etc/nginx/sites-available/health-logger
-```
-
-Paste:
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com www.yourdomain.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-```bash
-# Enable the site
-ln -s /etc/nginx/sites-available/health-logger /etc/nginx/sites-enabled/
-nginx -t && systemctl reload nginx
-
-# Get SSL certificate
-certbot --nginx -d yourdomain.com -d www.yourdomain.com
-```
+> **Note:** The container name `nextjs_space-app-1` may differ. Check with `docker ps`.
 
 ---
 
-## 9. Prisma Schema — Fix Output Path
+## 7. Architecture
 
-Before running on your VPS, edit `prisma/schema.prisma` and **remove the `output` line** from the `generator client` block:
-
-```prisma
-generator client {
-    provider = "prisma-client-js"
-    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    // ← remove the output = "..." line — Prisma defaults to node_modules/.prisma/client
-}
+```
+Internet → Caddy (ports 80/443, auto-SSL)
+              ↓ (caddy_network)
+         app (Next.js :3000)
+              ↓ (internal network)
+         db (PostgreSQL :5432)
 ```
 
-Then run `yarn prisma generate` to regenerate the client.
-
----
-
-## 10. next.config.js — Simplify
-
-Replace the contents of `next.config.js` with this clean version:
-
-```javascript
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  eslint: { ignoreDuringBuilds: true },
-  typescript: { ignoreBuildErrors: false },
-  images: { unoptimized: true },
-};
-
-module.exports = nextConfig;
-```
-
-The original has platform-specific settings (`NEXT_DIST_DIR`, `NEXT_OUTPUT_MODE`, `outputFileTracingRoot`) that are not needed on your VPS.
-
----
-
-## Summary of What's Ready vs. What You Need to Do
-
-| Component | Status | Action on VPS |
+| Service | Network | Exposed? |
 |---|---|---|
-| ✅ LLM (Ollama Cloud) | **Ready** | Just set `OLLAMA_API_KEY` in .env |
-| ✅ Email (Nodemailer) | **Ready** | Just set SMTP env vars in .env |
-| ✅ Image capture + vision | **Ready** | Nothing to do |
-| ✅ Layout (script tag) | **Ready** | Already removed |
-| ✅ All Abacus code refs | **Ready** | Zero references remaining |
-| ⚙️ Push cron jobs | Code ready | Add 3 crontab lines (see section 7) |
-| ⚙️ Database | Code ready | Set up PostgreSQL + `DATABASE_URL` |
-| ⚙️ VAPID keys | Code ready | Generate new: `npx web-push generate-vapid-keys` |
-| ⚙️ Prisma output path | Needs edit | Remove `output` line from schema.prisma (section 9) |
-| ⚙️ next.config.js | Needs simplify | Replace with clean version (section 10) |
+| `app` | `caddy_network` + `internal` | Via Caddy only |
+| `db` | `internal` only | No — internal to Docker |
 
 ---
 
-## Hostinger DNS Setup
+## 8. Ongoing Maintenance
 
-In your Hostinger control panel:
-1. Go to **Domains** → your domain → **DNS Zone**
-2. Add/edit an **A record**: `@` → your VPS IP address
-3. Add an **A record**: `www` → your VPS IP address
-4. Wait for propagation (usually 5-15 min with Hostinger)
-
----
-
-## Ongoing Maintenance
-
+### Pull updates & rebuild
 ```bash
-# View logs
-pm2 logs health-logger
-
-# Restart after code changes
-cd /var/www/health-logger
-yarn build
-pm2 restart health-logger
-
-# Database backup (set up as a daily cron)
-pg_dump -U healthlogger healthlogger > /backups/healthlogger_$(date +%Y%m%d).sql
+cd /opt/apps/wellnesslog
+git pull origin hostinger
+cd nextjs_space
+docker compose up -d --build
 ```
+
+### View logs
+```bash
+docker compose logs -f app      # App logs
+docker compose logs -f db        # Database logs
+```
+
+### Database backup
+```bash
+# One-time backup
+docker compose exec db pg_dump -U wellnesslog wellnesslog > backup_$(date +%Y%m%d).sql
+
+# Automated daily backup via cron
+0 3 * * * docker exec nextjs_space-db-1 pg_dump -U wellnesslog wellnesslog > /opt/backups/wellnesslog_$(date +\%Y\%m\%d).sql
+```
+
+### Restart
+```bash
+docker compose restart app    # Just the app
+docker compose restart         # Everything
+```
+
+---
+
+## 9. What's Ready vs. What You Fill In
+
+| Component | Status | Action |
+|---|---|---|
+| ✅ LLM (Ollama Cloud) | Pre-filled | Just verify API key in `.env` |
+| ✅ Docker Compose | Ready | `docker compose up -d --build` |
+| ✅ PostgreSQL | Auto-created | Schema push needed once (step 4) |
+| ✅ Caddy/SSL | Auto via labels | Nothing to do |
+| ✅ Email config | Pre-filled | Set `SMTP_PASS` in `.env` |
+| ⚙️ VAPID keys | Empty | Generate and paste into `.env` |
+| ⚙️ DB password | Placeholder | Set a strong password in `.env` |
+| ⚙️ Push cron | Instructions above | Add 3 crontab lines |
+
+---
 
 That's it! 🎉
