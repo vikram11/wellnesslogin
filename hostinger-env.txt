@@ -1,0 +1,23 @@
+# === DATABASE ===
+# Set up PostgreSQL on Hostinger and fill this in
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE_NAME"
+
+# === LLM API (Ollama Cloud — gemma4:31b-cloud with vision) ===
+OLLAMA_API_KEY="bef1758095114d51be25ebb2d88679f8.BG34PpG7Eze4l82zNuWPA9Vy"
+
+# === PUSH NOTIFICATIONS ===
+# Generate NEW keys: npx web-push generate-vapid-keys
+# Both devices will need to re-subscribe after deploy.
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=""
+VAPID_PRIVATE_KEY=""
+
+# === EMAIL (Nodemailer SMTP) ===
+# Once you create update@wellnesslog.in on Hostinger:
+SMTP_HOST="smtp.hostinger.com"
+SMTP_PORT="465"
+SMTP_USER="update@wellnesslog.in"
+SMTP_PASS=""
+EMAIL_FROM="WellnessLog.in <update@wellnesslog.in>"
+
+# === APP URL ===
+NEXTAUTH_URL="https://wellnesslog.in"
