@@ -158,20 +158,28 @@ async function saveHealthData(data: HealthData, tzOffset: string = '') {
           } else {
             console.warn('Edit: No matching BP record found for', match);
           }
-        } else if (type === 'observation') {
+        } else if (type === 'medication_log') {
           const where: Record<string, any> = {};
-          if (match.category) where.category = match.category;
-          if (match.description) where.description = { contains: match.description };
+          if (match.timeSlot) where.timeSlot = match.timeSlot;
+          if (match.date) {
+            const matchDate = ensureTimezone(match.date, tzOffset);
+            const startOfDay = new Date(matchDate);
+            startOfDay.setUTCHours(0, 0, 0, 0);
+            const endOfDay = new Date(matchDate);
+            endOfDay.setUTCHours(23, 59, 59, 999);
+            where.date = { gte: startOfDay, lte: endOfDay };
+          }
 
-          const records = await prisma.observation.findMany({ where, orderBy: { date: 'desc' }, take: 1 });
+          const records = await prisma.medicationLog.findMany({ where, orderBy: { date: 'desc' }, take: 1 });
           if (records.length > 0) {
             const updateData: Record<string, any> = {};
-            if (updates.description !== undefined) updateData.description = updates.description;
-            if (updates.category !== undefined) updateData.category = updates.category;
-            if (updates.severity !== undefined) updateData.severity = Number(updates.severity);
+            if (updates.medications !== undefined) updateData.medications = JSON.stringify(updates.medications);
+            if (updates.compliance !== undefined) updateData.compliance = Boolean(updates.compliance);
+            if (updates.notes !== undefined) updateData.notes = String(updates.notes);
+            if (updates.timeSlot !== undefined) updateData.timeSlot = String(updates.timeSlot);
             if (Object.keys(updateData).length > 0) {
-              await prisma.observation.update({ where: { id: records[0].id }, data: updateData });
-              results.push('Edited observation');
+              await prisma.medicationLog.update({ where: { id: records[0].id }, data: updateData });
+              results.push('Edited medication log');
             }
           }
         } else if (type === 'daily_note') {
@@ -421,8 +429,8 @@ export async function POST(request: NextRequest) {
       take: 10,
     });
 
-    // Get recent observations
-    const recentObs = await prisma.observation.findMany({
+    // Get recent daily notes
+    const recentNotes = await prisma.dailyNote.findMany({
       orderBy: { date: 'desc' },
       take: 5,
     });
@@ -488,8 +496,8 @@ export async function POST(request: NextRequest) {
       }).join('; ')}`;
     }
 
-    if (recentObs?.length) {
-      recentContext += `\n\nRecent observations: ${(recentObs ?? []).map((o: any) => `${formatDateLocal(o?.date)}: [${o?.category ?? ''}] ${o?.description ?? ''}`).join('; ')}`;
+    if (recentNotes?.length) {
+      recentContext += `\n\nRecent daily notes: ${(recentNotes ?? []).map((n: any) => `${formatDateLocal(n?.date)}: ${n?.note ?? ''}`).join('; ')}`;
     }
 
     const timeContext = localTime
