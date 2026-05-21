@@ -285,9 +285,90 @@ async function saveHealthData(data: HealthData, tzOffset: string = '') {
             });
             results.push(`Deleted ${records.length} medication log(s)`);
           }
+        } else if (type === 'medication') {
+          const where: Record<string, any> = {};
+          if (match.name) where.name = { equals: match.name, mode: 'insensitive' };
+
+          const records = await prisma.medication.findMany({
+            where,
+            take: count > 0 ? count : 100,
+          });
+
+          if (records.length > 0) {
+            await prisma.medication.deleteMany({
+              where: { id: { in: records.map((r: any) => r.id) } },
+            });
+            results.push(`Deleted ${records.length} medication(s)`);
+          }
         }
       } catch (e: any) {
         console.error('Error processing delete:', e);
+      }
+    }
+  }
+
+  // Handle medication changes (add, update, discontinue)
+  if (data?.medication_changes && (data.medication_changes?.length ?? 0) > 0) {
+    for (const change of data.medication_changes) {
+      try {
+        const action = change?.action ?? '';
+
+        if (action === 'add') {
+          await prisma.medication.create({
+            data: {
+              name: change?.name ?? 'Unknown',
+              dosage: change?.dosage ?? null,
+              timeSlot: change?.timeSlot ?? 'AM',
+              notes: change?.notes ?? null,
+              isActive: true,
+              startDate: new Date(),
+            },
+          });
+          results.push(`Added medication: ${change?.name}`);
+        } else if (action === 'update' && change?.match_name) {
+          // Find medication by name (case-insensitive)
+          const meds = await prisma.medication.findMany({
+            where: {
+              name: { equals: change.match_name, mode: 'insensitive' },
+              isActive: true,
+            },
+          });
+
+          if (meds.length > 0) {
+            const updateData: Record<string, any> = {};
+            if (change.name !== undefined && change.name !== change.match_name) updateData.name = change.name;
+            if (change.dosage !== undefined) updateData.dosage = change.dosage;
+            if (change.timeSlot !== undefined) updateData.timeSlot = change.timeSlot;
+            if (change.notes !== undefined) updateData.notes = change.notes;
+
+            if (Object.keys(updateData).length > 0) {
+              await prisma.medication.update({
+                where: { id: meds[0].id },
+                data: updateData,
+              });
+              results.push(`Updated medication: ${change.match_name}`);
+            }
+          } else {
+            console.warn('Medication change: No matching medication found for', change.match_name);
+          }
+        } else if (action === 'discontinue' && change?.match_name) {
+          const meds = await prisma.medication.findMany({
+            where: {
+              name: { equals: change.match_name, mode: 'insensitive' },
+              isActive: true,
+            },
+          });
+
+          if (meds.length > 0) {
+            await prisma.medication.update({
+              where: { id: meds[0].id },
+              data: { isActive: false, endDate: new Date() },
+            });
+            results.push(`Discontinued medication: ${change.match_name}`);
+          }
+        }
+      } catch (e: any) {
+        console.error('Error processing medication change:', e);
       }
     }
   }

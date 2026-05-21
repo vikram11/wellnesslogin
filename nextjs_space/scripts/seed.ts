@@ -41,7 +41,7 @@ async function main() {
     { name: 'Pantoprazole', dosage: '40 mg', timeSlot: 'MID', notes: '', isActive: true },
     { name: 'Vitamin D', dosage: '5000 IU', timeSlot: 'MID', notes: '', isActive: true },
     { name: 'Probiotic', dosage: '1 cap', timeSlot: 'MID', notes: '', isActive: true },
-    { name: 'Actemra', dosage: 'per protocol', timeSlot: 'MID', notes: '', isActive: true },
+    { name: 'Actemra', dosage: 'Weekly injection (Tuesdays)', timeSlot: 'AM', notes: 'Subcutaneous injection, weekly on Tuesdays', isActive: true },
     { name: 'Multivitamin', dosage: '1 tab', timeSlot: 'MID', notes: '', isActive: true },
     { name: 'Tums', dosage: '1000 mg', timeSlot: 'MID', notes: 'As needed', isActive: true },
     { name: 'Potassium + Magnesium', dosage: '1000mg K + 200mg Mg', timeSlot: 'MID', notes: 'Supplement — added May 18', isActive: true, startDate: new Date('2026-05-18') },

@@ -34,6 +34,14 @@ export interface HealthData {
     old_value?: string;
     new_value?: string;
   }>;
+  medication_changes?: Array<{
+    action: string; // add | update | discontinue
+    name?: string;
+    dosage?: string;
+    timeSlot?: string;
+    notes?: string;
+    match_name?: string;
+  }>;
   deletes?: Array<{
     type: string;
     match: Record<string, any>;
