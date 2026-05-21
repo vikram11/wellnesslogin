@@ -4,6 +4,7 @@ DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE_NAME"
 
 # === LLM API (Ollama Cloud — gemma4:31b-cloud with vision) ===
 OLLAMA_API_KEY="bef1758095114d51be25ebb2d88679f8.BG34PpG7Eze4l82zNuWPA9Vy"
+OLLAMA_MODEL="gemma4:31b-cloud"
 
 # === PUSH NOTIFICATIONS ===
 # Generate NEW keys: npx web-push generate-vapid-keys

@@ -563,7 +563,7 @@ export async function POST(request: NextRequest) {
         'Authorization': `Bearer ${process.env.OLLAMA_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gemma4:31b-cloud',
+        model: process.env.OLLAMA_MODEL || 'gemma4:31b-cloud',
         messages,
         stream: true,
         max_tokens: 2000,
