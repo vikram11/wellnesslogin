@@ -74,6 +74,14 @@ model DailyNote {
   @@index([date])
 }
 
+model SavedRecipient {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
 model ChatMessage {
   id        String   @id @default(cuid())
   role      String   // user or assistant
