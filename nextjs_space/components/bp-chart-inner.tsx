@@ -15,7 +15,7 @@ interface BpChartInnerProps {
 }
 
 export default function BpChartInner({ readings }: BpChartInnerProps) {
-  const chartData = (readings ?? []).map((r: any) => {
+  const chartData = [...(readings ?? [])].sort((a: any, b: any) => new Date(a?.date ?? 0).getTime() - new Date(b?.date ?? 0).getTime()).map((r: any) => {
     const d = r?.date ? new Date(r.date) : new Date();
     return {
       date: `${d.getMonth() + 1}/${d.getDate()}`,

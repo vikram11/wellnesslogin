@@ -31,6 +31,11 @@ export interface HealthData {
     old_value: string;
     new_value: string;
   }>;
+  deletes?: Array<{
+    type: string;
+    match: Record<string, any>;
+    count: number;
+  }>;
 }
 
 export function extractHealthData(text: string): { cleanText: string; healthData: HealthData | null } {

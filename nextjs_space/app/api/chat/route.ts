@@ -133,6 +133,89 @@ async function saveHealthData(data: HealthData, tzOffset: string = '') {
     }
   }
 
+  // Handle deletes
+  if (data?.deletes && (data.deletes?.length ?? 0) > 0) {
+    for (const del of data.deletes) {
+      try {
+        const type = del?.type ?? '';
+        const match = del?.match ?? {};
+        const count = del?.count ?? 0;
+
+        if (type === 'bp_reading') {
+          const where: Record<string, any> = {};
+          if (match.systolic) where.systolic = Number(match.systolic);
+          if (match.diastolic) where.diastolic = Number(match.diastolic);
+          if (match.pulse) where.pulse = Number(match.pulse);
+
+          // Find matching records, limited by count
+          const records = await prisma.bpReading.findMany({
+            where,
+            orderBy: { date: 'desc' },
+            take: count > 0 ? count : 100,
+          });
+
+          if (records.length > 0) {
+            await prisma.bpReading.deleteMany({
+              where: { id: { in: records.map((r: any) => r.id) } },
+            });
+            results.push(`Deleted ${records.length} BP reading(s)`);
+          }
+        } else if (type === 'observation') {
+          const where: Record<string, any> = {};
+          if (match.description) where.description = { contains: match.description };
+          if (match.category) where.category = match.category;
+
+          const records = await prisma.observation.findMany({
+            where,
+            orderBy: { date: 'desc' },
+            take: count > 0 ? count : 100,
+          });
+
+          if (records.length > 0) {
+            await prisma.observation.deleteMany({
+              where: { id: { in: records.map((r: any) => r.id) } },
+            });
+            results.push(`Deleted ${records.length} observation(s)`);
+          }
+        } else if (type === 'daily_note') {
+          const where: Record<string, any> = {};
+          if (match.note) where.note = { contains: match.note };
+
+          const records = await prisma.dailyNote.findMany({
+            where,
+            orderBy: { date: 'desc' },
+            take: count > 0 ? count : 100,
+          });
+
+          if (records.length > 0) {
+            await prisma.dailyNote.deleteMany({
+              where: { id: { in: records.map((r: any) => r.id) } },
+            });
+            results.push(`Deleted ${records.length} note(s)`);
+          }
+        } else if (type === 'medication_log') {
+          const where: Record<string, any> = {};
+          if (match.timeSlot) where.timeSlot = match.timeSlot;
+
+          const records = await prisma.medicationLog.findMany({
+            where,
+            orderBy: { date: 'desc' },
+            take: count > 0 ? count : 100,
+          });
+
+          if (records.length > 0) {
+            await prisma.medicationLog.deleteMany({
+              where: { id: { in: records.map((r: any) => r.id) } },
+            });
+            results.push(`Deleted ${records.length} medication log(s)`);
+          }
+        }
+      } catch (e: any) {
+        console.error('Error processing delete:', e);
+      }
+    }
+  }
+
   return results;
 }
 

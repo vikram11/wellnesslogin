@@ -48,7 +48,8 @@ IMPORTANT: When extracting structured data from the conversation, output a JSON 
   "medication_logs": [{ "date": "ISO date", "timeSlot": "AM|MID|PM", "medications": ["med names"], "compliance": true, "notes": "string" }],
   "observations": [{ "date": "ISO date", "category": "symptom|appointment|medication_change|activity|protocol|bp_note", "description": "string", "severity": number|null }],
   "daily_notes": [{ "date": "ISO date", "note": "string" }],
-  "edits": [{ "type": "bp_reading|medication_log|observation|daily_note", "id": "record id if known", "field": "field to edit", "old_value": "old value", "new_value": "new value" }]
+  "edits": [{ "type": "bp_reading|medication_log|observation|daily_note", "id": "record id if known", "field": "field to edit", "old_value": "old value", "new_value": "new value" }],
+  "deletes": [{ "type": "bp_reading|medication_log|observation|daily_note", "match": { "systolic": number, "diastolic": number, "date": "partial date match", "description": "text match" }, "count": number }]
 }
 
 Only include arrays that have data. If no structured data to extract, don't include the tags.

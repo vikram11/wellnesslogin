@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       where: {
         date: { gte: fromDate },
       },
-      orderBy: { date: 'asc' },
+      orderBy: { date: 'desc' },
     });
 
     return NextResponse.json({ readings: readings ?? [] });
