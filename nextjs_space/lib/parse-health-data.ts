@@ -26,10 +26,13 @@ export interface HealthData {
   }>;
   edits?: Array<{
     type: string;
-    id: string;
-    field: string;
-    old_value: string;
-    new_value: string;
+    match?: Record<string, any>;
+    updates?: Record<string, any>;
+    // Legacy fields
+    id?: string;
+    field?: string;
+    old_value?: string;
+    new_value?: string;
   }>;
   deletes?: Array<{
     type: string;

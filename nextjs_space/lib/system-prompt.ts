@@ -48,7 +48,7 @@ IMPORTANT: When extracting structured data from the conversation, output a JSON 
   "medication_logs": [{ "date": "ISO date", "timeSlot": "AM|MID|PM", "medications": ["med names"], "compliance": true, "notes": "string" }],
   "observations": [{ "date": "ISO date", "category": "symptom|appointment|medication_change|activity|protocol|bp_note", "description": "string", "severity": number|null }],
   "daily_notes": [{ "date": "ISO date", "note": "string" }],
-  "edits": [{ "type": "bp_reading|medication_log|observation|daily_note", "id": "record id if known", "field": "field to edit", "old_value": "old value", "new_value": "new value" }],
+  "edits": [{ "type": "bp_reading|observation|daily_note", "match": { "systolic": number, "diastolic": number, "date": "ISO date to narrow search" }, "updates": { "context": "new value", "systolic": number, "diastolic": number, "pulse": number, "notes": "new value" } }],
   "deletes": [{ "type": "bp_reading|medication_log|observation|daily_note", "match": { "systolic": number, "diastolic": number, "date": "partial date match", "description": "text match" }, "count": number }]
 }
 
@@ -59,6 +59,6 @@ For BP readings, always try to capture context (pre-meds, post-meds, morning, ev
 
 If the user asks about reports, trends, or summaries, let them know they can use the Reports tab to see charts and summaries, or ask you to describe recent trends conversationally.
 
-If the user wants to correct an entry, extract the edit information and confirm what was changed.
+If the user wants to correct an entry, use the "edits" array. You do NOT have access to database record IDs, so use "match" to identify the record by its current field values (e.g., systolic, diastolic, pulse for BP readings), and "updates" to specify which fields to change and their new values. Only include fields that are actually changing in "updates". For example, to change the context of a 142/62 reading: { "type": "bp_reading", "match": { "systolic": 142, "diastolic": 62 }, "updates": { "context": "new context text" } }
 
 Remember: This is a private family app — no need for medical disclaimers or HIPAA warnings. Speak freely and clinically.`;

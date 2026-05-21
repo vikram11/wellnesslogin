@@ -109,23 +109,99 @@ async function saveHealthData(data: HealthData, tzOffset: string = '') {
     }
   }
 
-  // Handle edits
+  // Handle edits — match records by field values since LLM doesn't know database IDs
   if (data?.edits && (data.edits?.length ?? 0) > 0) {
     for (const edit of data.edits) {
       try {
-        if (edit?.type === 'bp_reading' && edit?.id) {
-          const updateData: Record<string, any> = {};
-          const field = edit?.field ?? '';
-          if (field === 'systolic' || field === 'diastolic' || field === 'pulse') {
-            updateData[field] = parseInt(edit?.new_value ?? '0', 10);
-          } else {
-            updateData[field] = edit?.new_value ?? '';
+        const type = edit?.type ?? '';
+        const match = edit?.match ?? {};
+        const updates = edit?.updates ?? {};
+
+        if (type === 'bp_reading') {
+          // Build where clause from match criteria
+          const where: Record<string, any> = {};
+          if (match.systolic) where.systolic = Number(match.systolic);
+          if (match.diastolic) where.diastolic = Number(match.diastolic);
+          if (match.pulse) where.pulse = Number(match.pulse);
+          if (match.date) {
+            // Try to match the date approximately
+            const matchDate = ensureTimezone(match.date, tzOffset);
+            const startOfDay = new Date(matchDate);
+            startOfDay.setUTCHours(0, 0, 0, 0);
+            const endOfDay = new Date(matchDate);
+            endOfDay.setUTCHours(23, 59, 59, 999);
+            where.date = { gte: startOfDay, lte: endOfDay };
           }
-          await prisma.bpReading.update({
-            where: { id: edit.id },
-            data: updateData,
+
+          // Find matching record(s)
+          const records = await prisma.bpReading.findMany({
+            where,
+            orderBy: { date: 'desc' },
+            take: 1,
           });
-          results.push(`Edited BP reading`);
+
+          if (records.length > 0) {
+            const updateData: Record<string, any> = {};
+            if (updates.systolic !== undefined) updateData.systolic = Number(updates.systolic);
+            if (updates.diastolic !== undefined) updateData.diastolic = Number(updates.diastolic);
+            if (updates.pulse !== undefined) updateData.pulse = Number(updates.pulse);
+            if (updates.context !== undefined) updateData.context = String(updates.context);
+            if (updates.notes !== undefined) updateData.notes = String(updates.notes);
+
+            if (Object.keys(updateData).length > 0) {
+              await prisma.bpReading.update({
+                where: { id: records[0].id },
+                data: updateData,
+              });
+              results.push(`Edited BP reading (${records[0].systolic}/${records[0].diastolic})`);
+            }
+          } else {
+            console.warn('Edit: No matching BP record found for', match);
+          }
+        } else if (type === 'observation') {
+          const where: Record<string, any> = {};
+          if (match.category) where.category = match.category;
+          if (match.description) where.description = { contains: match.description };
+
+          const records = await prisma.observation.findMany({ where, orderBy: { date: 'desc' }, take: 1 });
+          if (records.length > 0) {
+            const updateData: Record<string, any> = {};
+            if (updates.description !== undefined) updateData.description = updates.description;
+            if (updates.category !== undefined) updateData.category = updates.category;
+            if (updates.severity !== undefined) updateData.severity = Number(updates.severity);
+            if (Object.keys(updateData).length > 0) {
+              await prisma.observation.update({ where: { id: records[0].id }, data: updateData });
+              results.push('Edited observation');
+            }
+          }
+        } else if (type === 'daily_note') {
+          const where: Record<string, any> = {};
+          if (match.note) where.note = { contains: match.note };
+
+          const records = await prisma.dailyNote.findMany({ where, orderBy: { date: 'desc' }, take: 1 });
+          if (records.length > 0) {
+            const updateData: Record<string, any> = {};
+            if (updates.note !== undefined) updateData.note = updates.note;
+            if (Object.keys(updateData).length > 0) {
+              await prisma.dailyNote.update({ where: { id: records[0].id }, data: updateData });
+              results.push('Edited daily note');
+            }
+          }
+        }
+
+        // Legacy support: if edit has old id-based format, try that too
+        if (!edit?.match && edit?.id && type === 'bp_reading') {
+          try {
+            const updateData: Record<string, any> = {};
+            const field = edit?.field ?? '';
+            if (field === 'systolic' || field === 'diastolic' || field === 'pulse') {
+              updateData[field] = parseInt(edit?.new_value ?? '0', 10);
+            } else {
+              updateData[field] = edit?.new_value ?? '';
+            }
+            await prisma.bpReading.update({ where: { id: edit.id }, data: updateData });
+            results.push('Edited BP reading (by id)');
+          } catch { /* ignore if id doesn't exist */ }
         }
       } catch (e: any) {
         console.error('Error processing edit:', e);
