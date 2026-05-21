@@ -143,10 +143,7 @@ If you ever want to switch to OpenAI or another provider, change the URL in two 
 - `app/api/reports/doctor-summary/route.ts` (same search)
 
 ### `app/layout.tsx`
-Remove this line (it's a platform-specific script, harmless but unnecessary):
-```html
-<script src="https://apps.abacus.ai/chatllm/appllm-lib.js"></script>
-```
+✅ Already done — the platform script tag has been removed.
 
 ---
 
@@ -245,25 +242,23 @@ certbot --nginx -d yourdomain.com -d www.yourdomain.com
 
 ## 9. Prisma Schema — Fix Output Path
 
-Before running on your VPS, update `prisma/schema.prisma`:
+Before running on your VPS, edit `prisma/schema.prisma` and **remove the `output` line** from the `generator client` block:
 
-Change:
 ```prisma
-output = "/home/ubuntu/health_logger/nextjs_space/node_modules/.prisma/client"
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    // ← remove the output = "..." line — Prisma defaults to node_modules/.prisma/client
+}
 ```
 
-To:
-```prisma
-output = "../node_modules/.prisma/client"
-```
-
-(Or simply remove the `output` line entirely — Prisma defaults to `node_modules/.prisma/client`)
+Then run `yarn prisma generate` to regenerate the client.
 
 ---
 
 ## 10. next.config.js — Simplify
 
-The `experimental.outputFileTracingRoot` and `NEXT_DIST_DIR` / `NEXT_OUTPUT_MODE` env vars are Abacus-specific. Simplify `next.config.js` to:
+Replace the contents of `next.config.js` with this clean version:
 
 ```javascript
 /** @type {import('next').NextConfig} */
@@ -276,21 +271,24 @@ const nextConfig = {
 module.exports = nextConfig;
 ```
 
+The original has platform-specific settings (`NEXT_DIST_DIR`, `NEXT_OUTPUT_MODE`, `outputFileTracingRoot`) that are not needed on your VPS.
+
 ---
 
-## Summary of Changes Needed
+## Summary of What's Ready vs. What You Need to Do
 
-| What | Current (Abacus) | Self-Hosted Replacement |
+| Component | Status | Action on VPS |
 |---|---|---|
-| LLM API | `ollama.com/v1/chat/completions` | Already configured for Ollama Cloud |
-| LLM model | `gemma4:31b-cloud` | Already configured (vision-capable) |
-| Email sending | Nodemailer + SMTP | Already configured — just add SMTP env vars |
-| Push cron jobs | Abacus scheduled tasks | Linux crontab |
-| Database | Abacus-hosted PostgreSQL | Self-hosted PostgreSQL |
-| VAPID keys | Abacus .env | Generate new: `npx web-push generate-vapid-keys` |
-| Prisma output path | Hardcoded absolute path | Relative `../node_modules/.prisma/client` |
-| `next.config.js` | Abacus build flags | Simplified standard config |
-| Layout script | `appllm-lib.js` | Remove |
+| ✅ LLM (Ollama Cloud) | **Ready** | Just set `OLLAMA_API_KEY` in .env |
+| ✅ Email (Nodemailer) | **Ready** | Just set SMTP env vars in .env |
+| ✅ Image capture + vision | **Ready** | Nothing to do |
+| ✅ Layout (script tag) | **Ready** | Already removed |
+| ✅ All Abacus code refs | **Ready** | Zero references remaining |
+| ⚙️ Push cron jobs | Code ready | Add 3 crontab lines (see section 7) |
+| ⚙️ Database | Code ready | Set up PostgreSQL + `DATABASE_URL` |
+| ⚙️ VAPID keys | Code ready | Generate new: `npx web-push generate-vapid-keys` |
+| ⚙️ Prisma output path | Needs edit | Remove `output` line from schema.prisma (section 9) |
+| ⚙️ next.config.js | Needs simplify | Replace with clean version (section 10) |
 
 ---
 
