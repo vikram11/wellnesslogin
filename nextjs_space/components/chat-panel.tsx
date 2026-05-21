@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Heart, Bot, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { Send, Loader2, Heart, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { ChatMarkdown } from '@/components/chat-markdown';
-import { useVoiceInput } from '@/hooks/use-voice-input';
-import { useTts } from '@/hooks/use-tts';
 
 interface Message {
   id: string;
@@ -22,34 +20,8 @@ export function ChatPanel() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
-  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
-  const [voiceLang, setVoiceLang] = useState<'en-US' | 'ta-IN'>('en-US');
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Voice input (speech-to-text)
-  const { isListening, isSupported: sttSupported, toggleListening, stopListening } = useVoiceInput(
-    (text: string) => setInput(text),
-    voiceLang
-  );
-
-  // Text-to-speech
-  const { isSpeaking, isSupported: ttsSupported, speak, stop: stopTts } = useTts();
-
-  const handleSpeak = useCallback((msgId: string, content: string) => {
-    if (isSpeaking && speakingMsgId === msgId) {
-      stopTts();
-      setSpeakingMsgId(null);
-    } else {
-      speak(content);
-      setSpeakingMsgId(msgId);
-    }
-  }, [isSpeaking, speakingMsgId, speak, stopTts]);
-
-  // Reset speaking state when TTS finishes
-  useEffect(() => {
-    if (!isSpeaking) setSpeakingMsgId(null);
-  }, [isSpeaking]);
 
   // Load chat history
   useEffect(() => {
@@ -253,19 +225,6 @@ export function ChatPanel() {
                       </div>
                     )}
                   </div>
-                  {msg?.role === 'assistant' && msg?.content && ttsSupported && (
-                    <button
-                      onClick={() => handleSpeak(msg.id, msg.content)}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors self-start ml-1"
-                      title={isSpeaking && speakingMsgId === msg.id ? 'Stop reading' : 'Read aloud'}
-                    >
-                      {isSpeaking && speakingMsgId === msg.id ? (
-                        <><VolumeX className="w-3.5 h-3.5" /> Stop</>
-                      ) : (
-                        <><Volume2 className="w-3.5 h-3.5" /> Listen</>
-                      )}
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
@@ -275,49 +234,18 @@ export function ChatPanel() {
 
       {/* Input Area */}
       <div className="border-t border-border bg-card px-4 py-3">
-        {isListening && (
-          <div className="max-w-3xl mx-auto mb-2 flex items-center gap-2 px-1">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
-            </span>
-            <span className="text-xs text-muted-foreground">
-              Listening{voiceLang === 'ta-IN' ? ' (தமிழ்)' : ''}… speak now
-            </span>
-          </div>
-        )}
         <div className="max-w-3xl mx-auto flex gap-2 items-end">
           <Textarea
             ref={textareaRef}
             value={input}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e?.target?.value ?? '')}
             onKeyDown={handleKeyDown}
-            placeholder={isListening ? 'Listening…' : 'Tell me about your health today...'}
+            placeholder="Tell me about your health today..."
             className="min-h-[44px] max-h-[120px] resize-none text-sm"
             rows={1}
           />
-          {sttSupported && (
-            <div className="flex items-end gap-1 shrink-0">
-              <button
-                onClick={() => setVoiceLang(voiceLang === 'en-US' ? 'ta-IN' : 'en-US')}
-                className="h-[44px] px-2 rounded-md text-xs font-semibold border border-border bg-card hover:bg-accent transition-colors flex items-center justify-center min-w-[36px]"
-                title={voiceLang === 'en-US' ? 'Switch mic to Tamil' : 'Switch mic to English'}
-              >
-                {voiceLang === 'en-US' ? 'EN' : 'த'}
-              </button>
-              <Button
-                onClick={toggleListening}
-                variant={isListening ? 'destructive' : 'outline'}
-                size="icon"
-                className="shrink-0 h-[44px] w-[44px]"
-                title={isListening ? 'Stop listening' : 'Voice input'}
-              >
-                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-              </Button>
-            </div>
-          )}
           <Button
-            onClick={() => { stopListening(); sendMessage(); }}
+            onClick={sendMessage}
             disabled={isLoading || !(input?.trim?.())}
             size="icon"
             className="shrink-0 h-[44px] w-[44px]"
