@@ -74,6 +74,18 @@ model DailyNote {
   @@index([date])
 }
 
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  label     String?  // optional device label like "Amma's iPhone"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([endpoint])
+}
+
 model SavedRecipient {
   id        String   @id @default(cuid())
   email     String   @unique

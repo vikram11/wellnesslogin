@@ -8,6 +8,7 @@ import { HistoryPanel } from '@/components/history-panel';
 import { MedicationsPanel } from '@/components/medications-panel';
 import { EmailPanel } from '@/components/email-panel';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { NotificationToggle } from '@/components/notification-toggle';
 
 const tabs = [
   { id: 'chat', label: 'Chat', icon: MessageSquare },
@@ -35,7 +36,10 @@ export function AppShell() {
               <h1 className="font-display text-lg font-semibold tracking-tight">Health Logger</h1>
             </div>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <NotificationToggle />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
