@@ -270,10 +270,48 @@ export async function POST(request: NextRequest) {
       take: 5,
     });
 
+    // Format dates in the user's local timezone for LLM context
+    // The server runs in UTC, so we manually apply the offset
+    function formatDateLocal(d: Date | string | null): string {
+      if (!d) return 'unknown';
+      const utc = new Date(d);
+      // Parse offset in minutes from tzOffset string (e.g., "-05:00" → -300)
+      let offsetMinutes = 0;
+      if (tzOffset) {
+        const match = tzOffset.match(/^([+-])(\d{2}):(\d{2})$/);
+        if (match) {
+          offsetMinutes = (parseInt(match[2]) * 60 + parseInt(match[3])) * (match[1] === '+' ? 1 : -1);
+        }
+      }
+      const local = new Date(utc.getTime() + offsetMinutes * 60000);
+      const month = local.getUTCMonth() + 1;
+      const day = local.getUTCDate();
+      const year = local.getUTCFullYear();
+      return `${month}/${day}/${year}`;
+    }
+
+    function formatTimeLocal(d: Date | string | null): string {
+      if (!d) return '';
+      const utc = new Date(d);
+      let offsetMinutes = 0;
+      if (tzOffset) {
+        const match = tzOffset.match(/^([+-])(\d{2}):(\d{2})$/);
+        if (match) {
+          offsetMinutes = (parseInt(match[2]) * 60 + parseInt(match[3])) * (match[1] === '+' ? 1 : -1);
+        }
+      }
+      const local = new Date(utc.getTime() + offsetMinutes * 60000);
+      let hours = local.getUTCHours();
+      const minutes = local.getUTCMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12 || 12;
+      return `${hours}:${String(minutes).padStart(2, '0')} ${ampm}`;
+    }
+
     let recentContext = '';
 
     if (recentBP?.length) {
-      recentContext += `\n\nRecent BP readings: ${(recentBP ?? []).map((r: any) => `${r?.date ? new Date(r.date).toLocaleDateString() : 'unknown'} ${r?.date ? new Date(r.date).toLocaleTimeString() : ''}: ${r?.systolic ?? 0}/${r?.diastolic ?? 0} HR:${r?.pulse ?? 'N/A'} (${r?.context ?? ''})`).join(', ')}`;
+      recentContext += `\n\nRecent BP readings: ${(recentBP ?? []).map((r: any) => `${formatDateLocal(r?.date)} ${formatTimeLocal(r?.date)}: ${r?.systolic ?? 0}/${r?.diastolic ?? 0} HR:${r?.pulse ?? 'N/A'} (${r?.context ?? ''})`).join(', ')}`;
     }
 
     if (activeMeds?.length) {
@@ -289,12 +327,12 @@ export async function POST(request: NextRequest) {
     if (recentMedLogs?.length) {
       recentContext += `\n\nRecent medication logs (last 3 days): ${(recentMedLogs ?? []).map((l: any) => {
         const meds = (() => { try { return JSON.parse(l?.medications ?? '[]'); } catch { return []; } })();
-        return `${l?.date ? new Date(l.date).toLocaleDateString() : 'unknown'} ${l?.timeSlot ?? ''}: ${Array.isArray(meds) ? meds.join(', ') : 'unknown'}${l?.compliance ? ' ✓' : ' ✗'}`;
+        return `${formatDateLocal(l?.date)} ${l?.timeSlot ?? ''}: ${Array.isArray(meds) ? meds.join(', ') : 'unknown'}${l?.compliance ? ' ✓' : ' ✗'}`;
       }).join('; ')}`;
     }
 
     if (recentObs?.length) {
-      recentContext += `\n\nRecent observations: ${(recentObs ?? []).map((o: any) => `${o?.date ? new Date(o.date).toLocaleDateString() : 'unknown'}: [${o?.category ?? ''}] ${o?.description ?? ''}`).join('; ')}`;
+      recentContext += `\n\nRecent observations: ${(recentObs ?? []).map((o: any) => `${formatDateLocal(o?.date)}: [${o?.category ?? ''}] ${o?.description ?? ''}`).join('; ')}`;
     }
 
     const timeContext = localTime
