@@ -164,7 +164,8 @@ export function ChatPanel() {
       });
 
       if (!response?.ok) {
-        throw new Error('Failed to send message');
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody?.error || `Server error ${response?.status}`);
       }
 
       const reader = response?.body?.getReader();
@@ -205,10 +206,11 @@ export function ChatPanel() {
       }
     } catch (e: any) {
       console.error('Chat error:', e);
-      toast.error('Failed to send message. Please try again.');
+      const errMsg = e?.message || 'Unknown error';
+      toast.error(errMsg);
       setMessages((prev: Message[]) =>
         (prev ?? []).map((m: Message) =>
-          m?.id === assistantId ? { ...(m ?? {}), content: 'Sorry, I had trouble processing that. Please try again! 🙏' } as Message : m
+          m?.id === assistantId ? { ...(m ?? {}), content: `Sorry, I had trouble processing that: ${errMsg} 🙏` } as Message : m
         )
       );
     } finally {
