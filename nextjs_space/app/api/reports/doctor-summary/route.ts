@@ -28,12 +28,12 @@ export async function POST(request: NextRequest) {
       orderBy: [{ timeSlot: 'asc' }, { name: 'asc' }],
     });
 
-    const observations = await prisma.observation.findMany({
+    const medLogs = await prisma.medicationLog.findMany({
       where: { date: { gte: fromDate } },
       orderBy: { date: 'desc' },
     });
 
-    const medLogs = await prisma.medicationLog.findMany({
+    const notes = await prisma.dailyNote.findMany({
       where: { date: { gte: fromDate } },
       orderBy: { date: 'desc' },
     });
@@ -51,10 +51,18 @@ ${(medications ?? []).map((m: any) => `  [${m?.timeSlot ?? '?'}] ${m?.name ?? ''
 
 Medication Compliance: ${medLogs?.length ?? 0} logs, ${(medLogs ?? []).filter((l: any) => l?.compliance)?.length ?? 0} compliant
 
-Observations:
-${(observations ?? []).map((o: any) => {
-  const d = o?.date ? new Date(o.date) : new Date();
-  return `  ${fmtDate(d)} [${o?.category ?? ''}]: ${o?.description ?? ''}`;
+Medication Logs:
+${(medLogs ?? []).map((l: any) => {
+  const d = l?.date ? new Date(l.date) : new Date();
+  let meds: string[] = [];
+  try { meds = JSON.parse(l?.medications ?? '[]'); } catch { meds = []; }
+  return `  ${fmtDate(d)} ${fmtTime(d)} [${l?.timeSlot ?? '?'}]: ${Array.isArray(meds) ? meds.join(', ') : 'unknown'}${l?.compliance ? ' ✓' : ' ✗'}${l?.notes ? ' — ' + l.notes : ''}`;
+}).join('\n')}
+
+Daily Notes:
+${(notes ?? []).map((n: any) => {
+  const d = n?.date ? new Date(n.date) : new Date();
+  return `  ${fmtDate(d)}: ${n?.note ?? ''}`;
 }).join('\n')}
 `;
 
@@ -73,7 +81,7 @@ ${(observations ?? []).map((o: any) => {
           },
           {
             role: 'user',
-            content: `Generate a doctor-ready summary report based on the following ${days}-day health data:\n${dataContext}\n\nDo not use any patient names — refer to the patient as "the patient" only in this clinical document context.\n\nFormat with these sections:\n- Patient Overview\n- Blood Pressure Summary (include avg, range, trend assessment)\n- Current Medications\n- Medication Compliance\n- Notable Observations\n- Clinical Notes/Recommendations`,
+            content: `Generate a doctor-ready summary report based on the following ${days}-day health data:\n${dataContext}\n\nDo not use any patient names — refer to the patient as "the patient" only in this clinical document context.\n\nFormat with these sections:\n- Patient Overview\n- Blood Pressure Summary (include avg, range, trend assessment)\n- Current Medications\n- Medication Compliance & Logs\n- Daily Notes\n- Clinical Notes/Recommendations`,
           },
         ],
         max_tokens: 2000,

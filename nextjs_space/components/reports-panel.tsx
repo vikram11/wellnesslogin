@@ -22,7 +22,6 @@ interface SummaryData {
   bpStats: BpStats;
   medCompliance: { totalLogs: number; compliant: number };
   readings: any[];
-  observations: any[];
   notes: any[];
 }
 
@@ -184,21 +183,20 @@ export function ReportsPanel() {
         </Card>
       )}
 
-      {/* Observations */}
-      {(data?.observations?.length ?? 0) > 0 && (
+      {/* Recent Notes */}
+      {(data?.notes?.length ?? 0) > 0 && (
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-base">Recent Observations</CardTitle>
+            <CardTitle className="text-base">Recent Notes</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {(data?.observations ?? []).map((obs: any) => (
-                <li key={obs?.id} className="flex gap-3 text-sm">
+              {(data?.notes ?? []).map((n: any) => (
+                <li key={n?.id} className="flex gap-3 text-sm">
                   <span className="text-muted-foreground font-mono text-xs w-20 shrink-0">
-                    {obs?.date ? new Date(obs.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}
+                    {n?.date ? new Date(n.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-secondary text-xs font-medium">{obs?.category ?? ''}</span>
-                  <span>{obs?.description ?? ''}</span>
+                  <span>{n?.note ?? ''}</span>
                 </li>
               ))}
             </ul>

@@ -22,12 +22,6 @@ export async function GET(request: NextRequest) {
       orderBy: { date: 'desc' },
     });
 
-    // Get observations
-    const observations = await prisma.observation.findMany({
-      where: { date: { gte: fromDate } },
-      orderBy: { date: 'desc' },
-    });
-
     // Get daily notes
     const notes = await prisma.dailyNote.findMany({
       where: { date: { gte: fromDate } },
@@ -59,7 +53,6 @@ export async function GET(request: NextRequest) {
       bpStats,
       medCompliance,
       readings: readings ?? [],
-      observations: observations ?? [],
       notes: notes ?? [],
     });
   } catch (error: any) {
