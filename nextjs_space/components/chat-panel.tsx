@@ -76,7 +76,20 @@ export function ChatPanel() {
         body: JSON.stringify({
           message: trimmed,
           localTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
-          localDateTime: new Date().toISOString(),
+          localDateTime: (() => {
+            const now = new Date();
+            const offset = -now.getTimezoneOffset();
+            const sign = offset >= 0 ? '+' : '-';
+            const h = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
+            const m = String(Math.abs(offset) % 60).padStart(2, '0');
+            return now.getFullYear() + '-' +
+              String(now.getMonth() + 1).padStart(2, '0') + '-' +
+              String(now.getDate()).padStart(2, '0') + 'T' +
+              String(now.getHours()).padStart(2, '0') + ':' +
+              String(now.getMinutes()).padStart(2, '0') + ':' +
+              String(now.getSeconds()).padStart(2, '0') +
+              sign + h + ':' + m;
+          })(),
         }),
       });
 

@@ -5,7 +5,31 @@ import { prisma } from '@/lib/prisma';
 import { SYSTEM_PROMPT } from '@/lib/system-prompt';
 import { extractHealthData, HealthData } from '@/lib/parse-health-data';
 
-async function saveHealthData(data: HealthData) {
+// Parse timezone offset from client's ISO datetime (e.g., "2026-05-21T19:20:00.000-05:00" → "-05:00")
+function getTimezoneOffset(localDateTime: string): string {
+  const match = localDateTime?.match?.(/([+-]\d{2}:\d{2})$/);
+  if (match) return match[1];
+  // If Z (UTC), no offset needed
+  if (localDateTime?.endsWith?.('Z')) return '+00:00';
+  return '';
+}
+
+// Ensure a date string from the LLM includes timezone info
+function ensureTimezone(dateStr: string, tzOffset: string): Date {
+  if (!dateStr) return new Date();
+  // If the date already has timezone info (Z or +/-), parse directly
+  if (/[Zz]$/.test(dateStr) || /[+-]\d{2}:\d{2}$/.test(dateStr)) {
+    return new Date(dateStr);
+  }
+  // If it's just a date (no time), append midnight in user's timezone
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return new Date(`${dateStr}T12:00:00${tzOffset || '+00:00'}`);
+  }
+  // Otherwise, append the user's timezone offset
+  return new Date(`${dateStr}${tzOffset || '+00:00'}`);
+}
+
+async function saveHealthData(data: HealthData, tzOffset: string = '') {
   const results: string[] = [];
 
   // Save BP readings
@@ -14,7 +38,7 @@ async function saveHealthData(data: HealthData) {
       try {
         await prisma.bpReading.create({
           data: {
-            date: new Date(bp?.date ?? new Date().toISOString()),
+            date: ensureTimezone(bp?.date ?? '', tzOffset),
             systolic: bp?.systolic ?? 0,
             diastolic: bp?.diastolic ?? 0,
             pulse: bp?.pulse ?? null,
@@ -35,7 +59,7 @@ async function saveHealthData(data: HealthData) {
       try {
         await prisma.medicationLog.create({
           data: {
-            date: new Date(log?.date ?? new Date().toISOString()),
+            date: ensureTimezone(log?.date ?? '', tzOffset),
             timeSlot: log?.timeSlot ?? 'AM',
             medications: JSON.stringify(log?.medications ?? []),
             compliance: log?.compliance ?? true,
@@ -55,7 +79,7 @@ async function saveHealthData(data: HealthData) {
       try {
         await prisma.observation.create({
           data: {
-            date: new Date(obs?.date ?? new Date().toISOString()),
+            date: ensureTimezone(obs?.date ?? '', tzOffset),
             category: obs?.category ?? 'symptom',
             description: obs?.description ?? '',
             severity: obs?.severity ?? null,
@@ -74,7 +98,7 @@ async function saveHealthData(data: HealthData) {
       try {
         await prisma.dailyNote.create({
           data: {
-            date: new Date(note?.date ?? new Date().toISOString()),
+            date: ensureTimezone(note?.date ?? '', tzOffset),
             note: note?.note ?? '',
           },
         });
@@ -118,6 +142,7 @@ export async function POST(request: NextRequest) {
     const userMessage = body?.message ?? '';
     const localTime = body?.localTime ?? '';
     const localDateTime = body?.localDateTime ?? '';
+    const tzOffset = getTimezoneOffset(localDateTime);
 
     if (!userMessage) {
       return new Response(JSON.stringify({ error: 'Message is required' }), { status: 400 });
@@ -190,7 +215,7 @@ export async function POST(request: NextRequest) {
     }
 
     const timeContext = localTime
-      ? `\n\nThe user's current local time is ${localTime} (${localDateTime}). Use this as the default timestamp for any health data logged in this message if no specific time is mentioned.`
+      ? `\n\nThe user's current local time is ${localTime} (${localDateTime}). Use this as the default timestamp for any health data logged in this message if no specific time is mentioned. IMPORTANT: When outputting dates in the health_data JSON, always include the timezone offset (e.g., "2026-05-21T19:20:00${tzOffset || '-05:00'}"), never output bare dates without timezone info.`
       : '';
 
     const messages = [
@@ -245,7 +270,7 @@ export async function POST(request: NextRequest) {
                   // Process health data extraction
                   const { cleanText, healthData } = extractHealthData(fullContent);
                   if (healthData) {
-                    await saveHealthData(healthData);
+                    await saveHealthData(healthData, tzOffset);
                   }
                   // Save assistant message (clean version)
                   await prisma.chatMessage.create({
@@ -273,7 +298,7 @@ export async function POST(request: NextRequest) {
           if (fullContent) {
             const { cleanText, healthData } = extractHealthData(fullContent);
             if (healthData) {
-              await saveHealthData(healthData);
+              await saveHealthData(healthData, tzOffset);
             }
             await prisma.chatMessage.create({
               data: { role: 'assistant', content: cleanText },
