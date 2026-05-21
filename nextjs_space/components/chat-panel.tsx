@@ -27,7 +27,7 @@ export function ChatPanel() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Voice input (speech-to-text)
-  const { isListening, isSupported: sttSupported, toggleListening } = useVoiceInput(
+  const { isListening, isSupported: sttSupported, toggleListening, stopListening } = useVoiceInput(
     (text: string) => setInput(text)
   );
 
@@ -304,7 +304,7 @@ export function ChatPanel() {
             </Button>
           )}
           <Button
-            onClick={() => { if (isListening) { toggleListening(); } sendMessage(); }}
+            onClick={() => { stopListening(); sendMessage(); }}
             disabled={isLoading || !(input?.trim?.())}
             size="icon"
             className="shrink-0 h-[44px] w-[44px]"

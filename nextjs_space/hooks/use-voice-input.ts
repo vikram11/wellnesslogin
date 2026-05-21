@@ -19,6 +19,11 @@ export function useVoiceInput(onResult?: (text: string) => void): UseVoiceInputR
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
 
+  // Track whether the user WANTS to be listening (survives re-renders and onend callbacks)
+  const wantListeningRef = useRef(false);
+  const finalTranscriptRef = useRef('');
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const SpeechRecognition =
@@ -26,16 +31,11 @@ export function useVoiceInput(onResult?: (text: string) => void): UseVoiceInputR
     setIsSupported(!!SpeechRecognition);
   }, []);
 
-  const startListening = useCallback(() => {
-    if (typeof window === 'undefined') return;
+  const createRecognition = useCallback(() => {
+    if (typeof window === 'undefined') return null;
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    // Stop any existing session
-    if (recognitionRef.current) {
-      try { recognitionRef.current.abort(); } catch {}
-    }
+    if (!SpeechRecognition) return null;
 
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
@@ -43,48 +43,100 @@ export function useVoiceInput(onResult?: (text: string) => void): UseVoiceInputR
     recognition.continuous = true;
     recognition.maxAlternatives = 1;
 
-    let finalTranscript = '';
-
     recognition.onresult = (event: any) => {
       let interim = '';
+      let finalChunk = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         if (result.isFinal) {
-          finalTranscript += result[0].transcript;
+          finalChunk += result[0].transcript;
         } else {
           interim += result[0].transcript;
         }
       }
-      const combined = (finalTranscript + interim).trim();
+      if (finalChunk) {
+        finalTranscriptRef.current += finalChunk;
+      }
+      const combined = (finalTranscriptRef.current + interim).trim();
       setTranscript(combined);
       onResultRef.current?.(combined);
     };
 
     recognition.onerror = (event: any) => {
       console.warn('Speech recognition error:', event.error);
-      // 'no-speech' and 'aborted' are non-critical
-      if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      // 'not-allowed' or 'service-not-allowed' means user denied mic — give up
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        wantListeningRef.current = false;
+        setIsListening(false);
+      }
+      // 'no-speech', 'aborted', 'network' — let onend handle restart
+    };
+
+    recognition.onend = () => {
+      // If user still wants to listen, restart after a brief delay
+      if (wantListeningRef.current) {
+        if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+        restartTimerRef.current = setTimeout(() => {
+          if (wantListeningRef.current) {
+            try {
+              // Create a fresh instance (some browsers can't restart the same one)
+              const fresh = createRecognition();
+              if (fresh) {
+                recognitionRef.current = fresh;
+                fresh.start();
+              } else {
+                wantListeningRef.current = false;
+                setIsListening(false);
+              }
+            } catch {
+              wantListeningRef.current = false;
+              setIsListening(false);
+            }
+          }
+        }, 300);
+      } else {
         setIsListening(false);
       }
     };
 
-    recognition.onend = () => {
-      setIsListening(false);
-    };
+    return recognition;
+  }, []);
+
+  const startListening = useCallback(() => {
+    // Stop any existing session
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch {}
+      recognitionRef.current = null;
+    }
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
+
+    const recognition = createRecognition();
+    if (!recognition) return;
 
     recognitionRef.current = recognition;
+    finalTranscriptRef.current = '';
     setTranscript('');
+    wantListeningRef.current = true;
     setIsListening(true);
 
     try {
       recognition.start();
     } catch (e) {
       console.error('Failed to start speech recognition:', e);
+      wantListeningRef.current = false;
       setIsListening(false);
     }
-  }, []);
+  }, [createRecognition]);
 
   const stopListening = useCallback(() => {
+    wantListeningRef.current = false;
+    if (restartTimerRef.current) {
+      clearTimeout(restartTimerRef.current);
+      restartTimerRef.current = null;
+    }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -95,16 +147,18 @@ export function useVoiceInput(onResult?: (text: string) => void): UseVoiceInputR
   }, []);
 
   const toggleListening = useCallback(() => {
-    if (isListening) {
+    if (wantListeningRef.current) {
       stopListening();
     } else {
       startListening();
     }
-  }, [isListening, startListening, stopListening]);
+  }, [startListening, stopListening]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      wantListeningRef.current = false;
+      if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch {}
       }
