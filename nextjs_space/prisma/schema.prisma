@@ -98,6 +98,7 @@ model ChatMessage {
   id        String   @id @default(cuid())
   role      String   // user or assistant
   content   String
+  imageData String?  // base64 image data (data:image/...) for vision messages
   createdAt DateTime @default(now())
 
   @@index([createdAt])

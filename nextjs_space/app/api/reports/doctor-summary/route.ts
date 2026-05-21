@@ -66,14 +66,14 @@ ${(notes ?? []).map((n: any) => {
 }).join('\n')}
 `;
 
-    const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
+    const response = await fetch('https://ollama.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.ABACUSAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.OLLAMA_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gpt-5.4-mini',
+        model: 'gemma4:31b-cloud',
         messages: [
           {
             role: 'system',

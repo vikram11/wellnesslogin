@@ -111,9 +111,8 @@ Create a `.env` file with these values:
 # === DATABASE ===
 DATABASE_URL="postgresql://healthlogger:your_secure_password_here@localhost:5432/healthlogger"
 
-# === LLM API (see section 5 for options) ===
-OPENAI_API_KEY="sk-your-openai-api-key"
-OPENAI_BASE_URL="https://api.openai.com/v1"
+# === LLM API (Ollama Cloud — gemma4:31b-cloud with vision) ===
+OLLAMA_API_KEY="your-ollama-api-key"
 
 # === PUSH NOTIFICATIONS ===
 # Generate new VAPID keys: npx web-push generate-vapid-keys
@@ -133,42 +132,18 @@ NEXTAUTH_URL="https://yourdomain.com"
 
 ---
 
-## 5. LLM API — What Needs to Change
+## 5. LLM API — Already Configured for Ollama Cloud
 
-The app currently calls the Abacus AI LLM endpoint. You need to switch it to OpenAI (or any OpenAI-compatible provider like Anthropic via a proxy, OpenRouter, etc.).
+The app is already configured to use **Ollama Cloud** with the `gemma4:31b-cloud` model (which has vision support for image analysis). Both the chat and doctor-summary routes point to `https://ollama.com/v1/chat/completions`.
 
-**Files to modify:**
+Just set your `OLLAMA_API_KEY` in the `.env` file and you're good to go.
 
-### `app/api/chat/route.ts` (line ~529)
-Change:
-```typescript
-const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${process.env.ABACUSAI_API_KEY}`,
-  },
-  body: JSON.stringify({
-    model: 'claude-sonnet-4-6',
-```
-
-To:
-```typescript
-const response = await fetch(`${process.env.OPENAI_BASE_URL}/chat/completions`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-  },
-  body: JSON.stringify({
-    model: 'gpt-4o',  // or your preferred model
-```
-
-### `app/api/reports/doctor-summary/route.ts` (line ~69)
-Same change — replace the Abacus URL/key with your OpenAI ones, and change the model from `gpt-5.4-mini` to `gpt-4o-mini` (or similar).
+If you ever want to switch to OpenAI or another provider, change the URL in two files:
+- `app/api/chat/route.ts` (search for `ollama.com/v1`)
+- `app/api/reports/doctor-summary/route.ts` (same search)
 
 ### `app/layout.tsx`
-Remove this line (it's an Abacus-specific script):
+Remove this line (it's a platform-specific script, harmless but unnecessary):
 ```html
 <script src="https://apps.abacus.ai/chatllm/appllm-lib.js"></script>
 ```
@@ -319,8 +294,8 @@ module.exports = nextConfig;
 
 | What | Current (Abacus) | Self-Hosted Replacement |
 |---|---|---|
-| LLM API | `apps.abacus.ai/v1/chat/completions` | OpenAI / OpenRouter / any OpenAI-compatible |
-| LLM models | `claude-sonnet-4-6`, `gpt-5.4-mini` | `gpt-4o`, `gpt-4o-mini` (or equivalent) |
+| LLM API | `ollama.com/v1/chat/completions` | Already configured for Ollama Cloud |
+| LLM model | `gemma4:31b-cloud` | Already configured (vision-capable) |
 | Email sending | Abacus notification API | Nodemailer + SMTP (Gmail, etc.) |
 | Push cron jobs | Abacus scheduled tasks | Linux crontab |
 | Database | Abacus-hosted PostgreSQL | Self-hosted PostgreSQL |

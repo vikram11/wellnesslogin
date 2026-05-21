@@ -402,15 +402,16 @@ export async function POST(request: NextRequest) {
     const userMessage = body?.message ?? '';
     const localTime = body?.localTime ?? '';
     const localDateTime = body?.localDateTime ?? '';
+    const imageData = body?.imageData ?? null; // base64 data URL for vision
     const tzOffset = getTimezoneOffset(localDateTime);
 
     if (!userMessage) {
       return new Response(JSON.stringify({ error: 'Message is required' }), { status: 400 });
     }
 
-    // Save user message to chat history
+    // Save user message to chat history (with optional image)
     await prisma.chatMessage.create({
-      data: { role: 'user', content: userMessage },
+      data: { role: 'user', content: userMessage, ...(imageData ? { imageData } : {}) },
     });
 
     // Get recent chat history for context
@@ -516,24 +517,53 @@ export async function POST(request: NextRequest) {
       ? `\n\nThe user's current local time is ${localTime} (${localDateTime}). Use this as the default timestamp for any health data logged in this message if no specific time is mentioned. IMPORTANT: When outputting dates in the health_data JSON, always include the timezone offset (e.g., "2026-05-21T19:20:00${tzOffset || '-05:00'}"), never output bare dates without timezone info.`
       : '';
 
+    // Build messages array — use OpenAI vision format when image is present
+    // Only include images from the last 4 messages to avoid excessive token usage
+    const reversed = (recentMessages ?? []).reverse();
+    const historyMsgs = reversed.map((m: any, idx: number) => {
+      const isRecent = idx >= reversed.length - 4;
+      if (m?.role === 'user' && m?.imageData && isRecent) {
+        return {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: m.imageData } },
+            { type: 'text', text: m?.content ?? '' },
+          ],
+        };
+      }
+      // For older messages with images, just include text + note
+      if (m?.role === 'user' && m?.imageData) {
+        return { role: 'user', content: `[Photo was attached] ${m?.content ?? ''}` };
+      }
+      return { role: m?.role ?? 'user', content: m?.content ?? '' };
+    });
+
+    // Current user message — multimodal if image attached
+    const currentUserMsg = imageData
+      ? {
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: imageData } },
+            { type: 'text', text: userMessage },
+          ],
+        }
+      : { role: 'user', content: userMessage };
+
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT + timeContext + recentContext },
-      ...(recentMessages ?? []).reverse().map((m: any) => ({
-        role: m?.role ?? 'user',
-        content: m?.content ?? '',
-      })),
-      { role: 'user', content: userMessage },
+      ...historyMsgs,
+      currentUserMsg,
     ];
 
     // Call LLM API with streaming
-    const response = await fetch('https://apps.abacus.ai/v1/chat/completions', {
+    const response = await fetch('https://ollama.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.ABACUSAI_API_KEY}`,
+        'Authorization': `Bearer ${process.env.OLLAMA_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'gemma4:31b-cloud',
         messages,
         stream: true,
         max_tokens: 2000,

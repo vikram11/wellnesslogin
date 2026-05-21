@@ -1,18 +1,53 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, Heart, Bot } from 'lucide-react';
+import { Send, Loader2, Heart, Bot, ImagePlus, Camera, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { ChatMarkdown } from '@/components/chat-markdown';
+import Image from 'next/image';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  imageData?: string | null;
   createdAt: string;
+}
+
+// Compress image to max dimension and quality, returns data URL
+function compressImage(file: File, maxDim = 1024, quality = 0.7): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = document.createElement('img');
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas not supported')); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function ChatPanel() {
@@ -20,8 +55,39 @@ export function ChatPanel() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle file selection (gallery or camera)
+  const handleImageFile = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file.');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Image too large. Please use a photo under 20 MB.');
+      return;
+    }
+    setIsCompressing(true);
+    try {
+      const compressed = await compressImage(file);
+      setImagePreview(compressed);
+    } catch {
+      toast.error('Could not process the image. Please try another.');
+    } finally {
+      setIsCompressing(false);
+    }
+  }, []);
+
+  const clearImage = useCallback(() => {
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  }, []);
 
   // Load chat history
   useEffect(() => {
@@ -50,17 +116,20 @@ export function ChatPanel() {
 
   const sendMessage = useCallback(async () => {
     const trimmed = input?.trim?.() ?? '';
-    if (!trimmed || isLoading) return;
+    if ((!trimmed && !imagePreview) || isLoading) return;
 
     const userMsg: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: trimmed,
+      content: trimmed || (imagePreview ? '(photo attached)' : ''),
+      imageData: imagePreview,
       createdAt: new Date().toISOString(),
     };
 
     setMessages((prev: Message[]) => [...(prev ?? []), userMsg]);
     setInput('');
+    const sentImage = imagePreview;
+    clearImage();
     setIsLoading(true);
 
     const assistantId = `assistant-${Date.now()}`;
@@ -74,7 +143,8 @@ export function ChatPanel() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: trimmed,
+          message: trimmed || 'What do you see in this image?',
+          imageData: sentImage,
           localTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
           localDateTime: (() => {
             const now = new Date();
@@ -144,7 +214,7 @@ export function ChatPanel() {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading]);
+  }, [input, isLoading, imagePreview, clearImage]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e?.key === 'Enter' && !e?.shiftKey) {
@@ -155,6 +225,29 @@ export function ChatPanel() {
 
   return (
     <div className="flex flex-col h-full max-w-3xl mx-auto">
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleImageFile(file);
+        }}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleImageFile(file);
+        }}
+      />
+
       {/* Messages Area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto chat-scroll px-4 py-4">
         {isLoadingHistory ? (
@@ -169,6 +262,9 @@ export function ChatPanel() {
             <h2 className="font-display text-xl font-semibold tracking-tight mb-2">Hi there! 👋</h2>
             <p className="text-muted-foreground max-w-sm text-sm">
               I'm your health logger. Tell me about blood pressure readings, medications taken, symptoms, or anything health-related and I'll keep track of it all.
+            </p>
+            <p className="text-muted-foreground max-w-sm text-xs mt-2">
+              📷 You can also snap a photo of a prescription bottle, lab report, or BP monitor!
             </p>
             <div className="mt-6 grid gap-2 w-full max-w-sm">
               {[
@@ -205,6 +301,20 @@ export function ChatPanel() {
                   </div>
                 )}
                 <div className="flex flex-col gap-1 max-w-[80%]">
+                  {/* Image attachment */}
+                  {msg?.role === 'user' && msg?.imageData && (
+                    <div className="rounded-xl overflow-hidden border border-border ml-auto" style={{ maxWidth: 240 }}>
+                      <div className="relative aspect-[4/3] bg-muted">
+                        <Image
+                          src={msg.imageData}
+                          alt="Attached photo"
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div
                     className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                       msg?.role === 'user'
@@ -234,19 +344,69 @@ export function ChatPanel() {
 
       {/* Input Area */}
       <div className="border-t border-border bg-card px-4 py-3">
+        {/* Image preview */}
+        {(imagePreview || isCompressing) && (
+          <div className="max-w-3xl mx-auto mb-2">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-1.5 pr-3">
+              {isCompressing ? (
+                <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : imagePreview ? (
+                <div className="relative w-12 h-12 rounded overflow-hidden bg-muted">
+                  <Image src={imagePreview} alt="Preview" fill className="object-cover" unoptimized />
+                </div>
+              ) : null}
+              <span className="text-xs text-muted-foreground">
+                {isCompressing ? 'Processing...' : 'Photo attached'}
+              </span>
+              {!isCompressing && (
+                <button
+                  onClick={clearImage}
+                  className="ml-1 p-0.5 rounded-full hover:bg-accent transition-colors"
+                >
+                  <X className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         <div className="max-w-3xl mx-auto flex gap-2 items-end">
+          {/* Image buttons */}
+          <div className="flex items-end gap-1 shrink-0">
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0 h-[44px] w-[44px]"
+              title="Attach photo"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading || isCompressing}
+            >
+              <ImagePlus className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0 h-[44px] w-[44px]"
+              title="Take photo"
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={isLoading || isCompressing}
+            >
+              <Camera className="w-4 h-4" />
+            </Button>
+          </div>
           <Textarea
             ref={textareaRef}
             value={input}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e?.target?.value ?? '')}
             onKeyDown={handleKeyDown}
-            placeholder="Tell me about your health today..."
+            placeholder={imagePreview ? 'Add a note about this photo (optional)...' : 'Tell me about your health today...'}
             className="min-h-[44px] max-h-[120px] resize-none text-sm"
             rows={1}
           />
           <Button
             onClick={sendMessage}
-            disabled={isLoading || !(input?.trim?.())}
+            disabled={isLoading || (!(input?.trim?.()) && !imagePreview)}
             size="icon"
             className="shrink-0 h-[44px] w-[44px]"
           >
