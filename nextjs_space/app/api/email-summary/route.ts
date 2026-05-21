@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import nodemailer from 'nodemailer';
 
 const TZ = 'America/Chicago';
 
@@ -215,31 +216,36 @@ export async function POST(request: NextRequest) {
       </div>
     `;
 
-    const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-    let appName = 'Health Logger';
-    try { appName = new URL(appUrl)?.hostname?.split?.('.')?.[0] ?? 'Health Logger'; } catch {}
+    // Validate SMTP config
+    const smtpHost = process.env.SMTP_HOST;
+    const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
+    const emailFrom = process.env.EMAIL_FROM || `Health Logger <${smtpUser}>`;
 
-    const emailResponse = await fetch('https://apps.abacus.ai/api/sendNotificationEmail', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        deployment_token: process.env.ABACUSAI_API_KEY,
-        app_id: process.env.WEB_APP_ID,
-        notification_id: process.env.NOTIF_ID_DAILY_HEALTH_SUMMARY,
-        subject: `${periodLabel} Health Summary — ${fmtDateShort(new Date())}`,
-        body: htmlBody,
-        is_html: true,
-        recipient_email: recipientEmail || 'vikram.rangala+4ygmarps@gmail.com',
-        sender_email: `noreply@${(() => { try { return new URL(appUrl)?.hostname ?? 'localhost'; } catch { return 'localhost'; } })()}`,
-        sender_alias: "Health Logger",
-      }),
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      throw new Error('Email not configured. Set SMTP_HOST, SMTP_USER, and SMTP_PASS in your environment.');
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465, // true for 465, false for 587/other
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
     });
 
-    const result = await emailResponse?.json?.();
+    const toAddr = recipientEmail || smtpUser;
+    const subject = `${periodLabel} Health Summary — ${fmtDateShort(new Date())}`;
 
-    if (!result?.success && !result?.notification_disabled) {
-      throw new Error(result?.message ?? 'Failed to send email');
-    }
+    await transporter.sendMail({
+      from: emailFrom,
+      to: toAddr,
+      subject,
+      html: htmlBody,
+    });
 
     return NextResponse.json({ success: true, message: 'Email sent successfully' });
   } catch (error: any) {

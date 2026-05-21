@@ -150,44 +150,32 @@ Remove this line (it's a platform-specific script, harmless but unnecessary):
 
 ---
 
-## 6. Email — What Needs to Change
+## 6. Email — Already Configured with Nodemailer
 
-The app currently uses the Abacus AI notification API for emails. You need to replace it with a standard SMTP approach (Nodemailer).
+The app already uses **Nodemailer** for sending health summary emails via SMTP. No code changes needed — just set these env vars:
 
-### Install Nodemailer:
-```bash
-yarn add nodemailer
-yarn add -D @types/nodemailer
+```env
+SMTP_HOST="smtp.gmail.com"        # or your Hostinger mail server
+SMTP_PORT="587"                    # 587 for STARTTLS, 465 for SSL
+SMTP_USER="your-email@gmail.com"
+SMTP_PASS="your-app-password"
+EMAIL_FROM="Health Logger <your-email@gmail.com>"
 ```
 
-### Replace `app/api/email-summary/route.ts`
-Find the section near line 222 that calls `https://apps.abacus.ai/api/sendNotificationEmail` and replace it with:
+### Gmail Setup
+1. Enable 2-Factor Authentication on your Google Account
+2. Go to [App Passwords](https://myaccount.google.com/apppasswords)
+3. Create a new app password → use it as `SMTP_PASS`
 
-```typescript
-import nodemailer from 'nodemailer';
-
-// ... (keep all the existing HTML body building code) ...
-
-// Replace the Abacus email fetch with:
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-await transporter.sendMail({
-  from: process.env.EMAIL_FROM,
-  to: recipientEmail,
-  subject: `Health Summary — ${periodLabel}`,
-  html: htmlBody,  // the HTML string you already build
-});
+### Hostinger Email Setup
+If you set up an email account through your Hostinger domain (e.g., `health@yourdomain.com`):
+```env
+SMTP_HOST="smtp.hostinger.com"
+SMTP_PORT="465"
+SMTP_USER="health@yourdomain.com"
+SMTP_PASS="your-hostinger-email-password"
+EMAIL_FROM="Health Logger <health@yourdomain.com>"
 ```
-
-**Gmail tip:** Use an [App Password](https://myaccount.google.com/apppasswords) — not your regular Gmail password.
 
 ---
 
@@ -296,7 +284,7 @@ module.exports = nextConfig;
 |---|---|---|
 | LLM API | `ollama.com/v1/chat/completions` | Already configured for Ollama Cloud |
 | LLM model | `gemma4:31b-cloud` | Already configured (vision-capable) |
-| Email sending | Abacus notification API | Nodemailer + SMTP (Gmail, etc.) |
+| Email sending | Nodemailer + SMTP | Already configured — just add SMTP env vars |
 | Push cron jobs | Abacus scheduled tasks | Linux crontab |
 | Database | Abacus-hosted PostgreSQL | Self-hosted PostgreSQL |
 | VAPID keys | Abacus .env | Generate new: `npx web-push generate-vapid-keys` |
