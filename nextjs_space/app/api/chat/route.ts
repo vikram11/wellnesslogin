@@ -145,8 +145,14 @@ async function saveHealthData(data: HealthData, tzOffset: string = '') {
             if (updates.systolic !== undefined) updateData.systolic = Number(updates.systolic);
             if (updates.diastolic !== undefined) updateData.diastolic = Number(updates.diastolic);
             if (updates.pulse !== undefined) updateData.pulse = Number(updates.pulse);
-            if (updates.context !== undefined) updateData.context = String(updates.context);
-            if (updates.notes !== undefined) updateData.notes = String(updates.notes);
+            if (updates.context !== undefined) {
+              const val = updates.context;
+              updateData.context = (val === null || val === '' || val === 'null') ? null : String(val);
+            }
+            if (updates.notes !== undefined) {
+              const val = updates.notes;
+              updateData.notes = (val === null || val === '' || val === 'null') ? null : String(val);
+            }
 
             if (Object.keys(updateData).length > 0) {
               await prisma.bpReading.update({
@@ -175,12 +181,18 @@ async function saveHealthData(data: HealthData, tzOffset: string = '') {
             const updateData: Record<string, any> = {};
             if (updates.medications !== undefined) updateData.medications = JSON.stringify(updates.medications);
             if (updates.compliance !== undefined) updateData.compliance = Boolean(updates.compliance);
-            if (updates.notes !== undefined) updateData.notes = String(updates.notes);
+            // Handle notes: null, "", or "null" all mean "clear the notes"
+            if (updates.notes !== undefined) {
+              const val = updates.notes;
+              updateData.notes = (val === null || val === '' || val === 'null') ? null : String(val);
+            }
             if (updates.timeSlot !== undefined) updateData.timeSlot = String(updates.timeSlot);
             if (Object.keys(updateData).length > 0) {
               await prisma.medicationLog.update({ where: { id: records[0].id }, data: updateData });
               results.push('Edited medication log');
             }
+          } else {
+            console.warn('Edit: No matching medication_log found for', match);
           }
         } else if (type === 'daily_note') {
           const where: Record<string, any> = {};
