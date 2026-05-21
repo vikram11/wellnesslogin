@@ -3,6 +3,20 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+const TZ = 'America/Chicago';
+
+function fmtDate(d: Date): string {
+  return d.toLocaleDateString('en-US', { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function fmtTime(d: Date): string {
+  return d.toLocaleTimeString('en-US', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtDateShort(d: Date): string {
+  return d.toLocaleDateString('en-US', { timeZone: TZ });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -37,8 +51,8 @@ export async function POST(request: NextRequest) {
     const bpRows = (readings ?? []).map((r: any) => {
       const d = r?.date ? new Date(r.date) : new Date();
       return `<tr>
-        <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${d.toLocaleDateString()}</td>
-        <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+        <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${fmtDate(d)}</td>
+        <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${fmtTime(d)}</td>
         <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;">${r?.systolic ?? 0}/${r?.diastolic ?? 0}</td>
         <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${r?.pulse ?? '—'}</td>
         <td style="padding:8px;border-bottom:1px solid #e5e7eb;">${r?.context ?? ''}</td>
@@ -50,12 +64,12 @@ export async function POST(request: NextRequest) {
 
     const obsHtml = (observations ?? []).map((o: any) => {
       const d = o?.date ? new Date(o.date) : new Date();
-      return `<li style="margin-bottom:6px;"><strong>${d.toLocaleDateString()}</strong> [${o?.category ?? ''}]: ${o?.description ?? ''}</li>`;
+      return `<li style="margin-bottom:6px;"><strong>${fmtDate(d)}</strong> [${o?.category ?? ''}]: ${o?.description ?? ''}</li>`;
     }).join('');
 
     const notesHtml = (notes ?? []).map((n: any) => {
       const d = n?.date ? new Date(n.date) : new Date();
-      return `<li style="margin-bottom:6px;"><strong>${d.toLocaleDateString()}</strong>: ${n?.note ?? ''}</li>`;
+      return `<li style="margin-bottom:6px;"><strong>${fmtDate(d)}</strong>: ${n?.note ?? ''}</li>`;
     }).join('');
 
     const periodLabel = days === 1 ? 'Daily' : `${days}-Day`;
@@ -64,7 +78,7 @@ export async function POST(request: NextRequest) {
       <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;color:#1a1a2e;">
         <div style="background:#0d9488;padding:20px 24px;border-radius:8px 8px 0 0;">
           <h1 style="color:white;margin:0;font-size:22px;">💚 ${periodLabel} Health Summary</h1>
-          <p style="color:#ccfbf1;margin:6px 0 0;font-size:14px;">Period: ${fromDate.toLocaleDateString()} — ${new Date().toLocaleDateString()}</p>
+          <p style="color:#ccfbf1;margin:6px 0 0;font-size:14px;">Period: ${fmtDate(fromDate)} — ${fmtDate(new Date())}</p>
         </div>
 
         <div style="padding:24px;background:#f8fffe;border:1px solid #e0f2f1;">
@@ -112,7 +126,7 @@ export async function POST(request: NextRequest) {
         deployment_token: process.env.ABACUSAI_API_KEY,
         app_id: process.env.WEB_APP_ID,
         notification_id: process.env.NOTIF_ID_DAILY_HEALTH_SUMMARY,
-        subject: `${periodLabel} Health Summary — ${new Date().toLocaleDateString()}`,
+        subject: `${periodLabel} Health Summary — ${fmtDateShort(new Date())}`,
         body: htmlBody,
         is_html: true,
         recipient_email: recipientEmail || 'vikram.rangala+4ygmarps@gmail.com',

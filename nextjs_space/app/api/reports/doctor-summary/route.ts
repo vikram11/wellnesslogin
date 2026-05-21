@@ -3,6 +3,14 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+const TZ = 'America/Chicago';
+function fmtDate(d: Date): string {
+  return d.toLocaleDateString('en-US', { timeZone: TZ, month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtTime(d: Date): string {
+  return d.toLocaleTimeString('en-US', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -35,7 +43,7 @@ export async function POST(request: NextRequest) {
 BP Readings (${readings?.length ?? 0} readings over ${days} days):
 ${(readings ?? []).map((r: any) => {
   const d = r?.date ? new Date(r.date) : new Date();
-  return `  ${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}: ${r?.systolic ?? 0}/${r?.diastolic ?? 0} HR:${r?.pulse ?? 'N/A'} (${r?.context ?? 'no context'})`;
+  return `  ${fmtDate(d)} ${fmtTime(d)}: ${r?.systolic ?? 0}/${r?.diastolic ?? 0} HR:${r?.pulse ?? 'N/A'} (${r?.context ?? 'no context'})`;
 }).join('\n')}
 
 Current Medications:
@@ -46,7 +54,7 @@ Medication Compliance: ${medLogs?.length ?? 0} logs, ${(medLogs ?? []).filter((l
 Observations:
 ${(observations ?? []).map((o: any) => {
   const d = o?.date ? new Date(o.date) : new Date();
-  return `  ${d.toLocaleDateString()} [${o?.category ?? ''}]: ${o?.description ?? ''}`;
+  return `  ${fmtDate(d)} [${o?.category ?? ''}]: ${o?.description ?? ''}`;
 }).join('\n')}
 `;
 
