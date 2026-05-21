@@ -19,7 +19,8 @@ services:
       retries: 10
 
   app:
-    image: wellnesslog:latest
+    build:
+      context: https://github.com/vikram11/wellnesslogin.git#hostinger:nextjs_space
     restart: unless-stopped
     depends_on:
       db:
