@@ -23,12 +23,14 @@ export function ChatPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const [voiceLang, setVoiceLang] = useState<'en-US' | 'ta-IN'>('en-US');
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Voice input (speech-to-text)
   const { isListening, isSupported: sttSupported, toggleListening, stopListening } = useVoiceInput(
-    (text: string) => setInput(text)
+    (text: string) => setInput(text),
+    voiceLang
   );
 
   // Text-to-speech
@@ -279,7 +281,9 @@ export function ChatPanel() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
             </span>
-            <span className="text-xs text-muted-foreground">Listening… speak now</span>
+            <span className="text-xs text-muted-foreground">
+              Listening{voiceLang === 'ta-IN' ? ' (தமிழ்)' : ''}… speak now
+            </span>
           </div>
         )}
         <div className="max-w-3xl mx-auto flex gap-2 items-end">
@@ -293,15 +297,24 @@ export function ChatPanel() {
             rows={1}
           />
           {sttSupported && (
-            <Button
-              onClick={toggleListening}
-              variant={isListening ? 'destructive' : 'outline'}
-              size="icon"
-              className="shrink-0 h-[44px] w-[44px]"
-              title={isListening ? 'Stop listening' : 'Voice input'}
-            >
-              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-            </Button>
+            <div className="flex items-end gap-1 shrink-0">
+              <button
+                onClick={() => setVoiceLang(voiceLang === 'en-US' ? 'ta-IN' : 'en-US')}
+                className="h-[44px] px-2 rounded-md text-xs font-semibold border border-border bg-card hover:bg-accent transition-colors flex items-center justify-center min-w-[36px]"
+                title={voiceLang === 'en-US' ? 'Switch mic to Tamil' : 'Switch mic to English'}
+              >
+                {voiceLang === 'en-US' ? 'EN' : 'த'}
+              </button>
+              <Button
+                onClick={toggleListening}
+                variant={isListening ? 'destructive' : 'outline'}
+                size="icon"
+                className="shrink-0 h-[44px] w-[44px]"
+                title={isListening ? 'Stop listening' : 'Voice input'}
+              >
+                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              </Button>
+            </div>
           )}
           <Button
             onClick={() => { stopListening(); sendMessage(); }}

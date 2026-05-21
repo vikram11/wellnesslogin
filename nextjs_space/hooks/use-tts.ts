@@ -48,9 +48,20 @@ export function useTts(): UseTtsReturn {
 
     if (!cleaned) return;
 
+    // Auto-detect Tamil: if ≥20% of characters are Tamil Unicode range, use ta-IN
+    const tamilChars = (cleaned.match(/[\u0B80-\u0BFF]/g) || []).length;
+    const isTamil = tamilChars > 0 && tamilChars / cleaned.replace(/\s/g, '').length > 0.15;
+
     const utterance = new SpeechSynthesisUtterance(cleaned);
+    utterance.lang = isTamil ? 'ta-IN' : 'en-US';
     utterance.rate = 0.95;
     utterance.pitch = 1;
+
+    // Try to find a matching voice
+    const voices = window.speechSynthesis.getVoices();
+    const targetLang = isTamil ? 'ta' : 'en';
+    const matchedVoice = voices.find(v => v.lang.startsWith(targetLang));
+    if (matchedVoice) utterance.voice = matchedVoice;
 
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);

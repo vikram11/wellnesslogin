@@ -11,7 +11,7 @@ interface UseVoiceInputReturn {
   toggleListening: () => void;
 }
 
-export function useVoiceInput(onResult?: (text: string) => void): UseVoiceInputReturn {
+export function useVoiceInput(onResult?: (text: string) => void, lang: string = 'en-US'): UseVoiceInputReturn {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -23,6 +23,8 @@ export function useVoiceInput(onResult?: (text: string) => void): UseVoiceInputR
   const wantListeningRef = useRef(false);
   const finalTranscriptRef = useRef('');
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const langRef = useRef(lang);
+  langRef.current = lang;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -38,7 +40,7 @@ export function useVoiceInput(onResult?: (text: string) => void): UseVoiceInputR
     if (!SpeechRecognition) return null;
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
+    recognition.lang = langRef.current;
     recognition.interimResults = true;
     recognition.continuous = true;
     recognition.maxAlternatives = 1;
