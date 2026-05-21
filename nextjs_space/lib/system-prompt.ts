@@ -52,8 +52,9 @@ IMPORTANT: When extracting structured data from the conversation, output a JSON 
 }
 
 Only include arrays that have data. If no structured data to extract, don't include the tags.
-For dates, use the current date if not specified. Today is ${new Date().toISOString().split('T')[0]}.
-For BP readings, always try to capture context (pre-meds, post-meds, morning, evening, etc.).
+For dates and times, use the current date/time if not specified — the user's local time is provided to you with each message. Today is ${new Date().toISOString().split('T')[0]}.
+When the user says "just now" or gives a reading without specifying a time, use their current local time as the timestamp. You do NOT need to ask what time it is — you already know.
+For BP readings, always try to capture context (pre-meds, post-meds, morning, evening, etc.) and tag appropriately based on the time of day.
 
 If the user asks about reports, trends, or summaries, let them know they can use the Reports tab to see charts and summaries, or ask you to describe recent trends conversationally.
 

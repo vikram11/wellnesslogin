@@ -116,6 +116,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const userMessage = body?.message ?? '';
+    const localTime = body?.localTime ?? '';
+    const localDateTime = body?.localDateTime ?? '';
 
     if (!userMessage) {
       return new Response(JSON.stringify({ error: 'Message is required' }), { status: 400 });
@@ -187,8 +189,12 @@ export async function POST(request: NextRequest) {
       recentContext += `\n\nRecent observations: ${(recentObs ?? []).map((o: any) => `${o?.date ? new Date(o.date).toLocaleDateString() : 'unknown'}: [${o?.category ?? ''}] ${o?.description ?? ''}`).join('; ')}`;
     }
 
+    const timeContext = localTime
+      ? `\n\nThe user's current local time is ${localTime} (${localDateTime}). Use this as the default timestamp for any health data logged in this message if no specific time is mentioned.`
+      : '';
+
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT + recentContext },
+      { role: 'system', content: SYSTEM_PROMPT + timeContext + recentContext },
       ...(recentMessages ?? []).reverse().map((m: any) => ({
         role: m?.role ?? 'user',
         content: m?.content ?? '',

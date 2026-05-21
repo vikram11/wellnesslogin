@@ -73,7 +73,11 @@ export function ChatPanel() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({
+          message: trimmed,
+          localTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+          localDateTime: new Date().toISOString(),
+        }),
       });
 
       if (!response?.ok) {
