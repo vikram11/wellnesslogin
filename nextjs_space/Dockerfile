@@ -13,7 +13,10 @@ COPY lib ./lib
 COPY public ./public
 COPY scripts ./scripts
 COPY types ./types
-COPY next.config.js next-env.d.ts tailwind.config.ts tsconfig.json postcss.config.js .env ./
+COPY next.config.js next-env.d.ts tailwind.config.ts tsconfig.json postcss.config.js ./
+
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
 
 RUN rm -f yarn.lock && \
     yarn install && \

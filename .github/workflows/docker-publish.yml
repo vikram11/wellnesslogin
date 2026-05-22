@@ -31,6 +31,8 @@ jobs:
         with:
           context: ./nextjs_space
           push: true
+          build-args: |
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
