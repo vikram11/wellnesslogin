@@ -2,14 +2,17 @@ version: '3.8'
 
 services:
   app:
-    image: ghcr.io/vikram11/wellnesslogin:latest
+    build:
+      context: https://github.com/vikram11/wellnesslogin.git#hostinger:nextjs_space
+      args:
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: BKOA6ECffh3T_Df16PHix1xtMPmh4WchYTBCFuBF5EFevnFz9ruz8SJCiCEpJu6NLSC-nrKWMab8b5xj_t7iQ7U
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://neondb_owner:npg_bGmIk2FDtL1B@ep-hidden-boat-ajjf9pbs.c-3.us-east-2.aws.neon.tech/neondb?sslmode=require
       OLLAMA_API_KEY: bef1758095114d51be25ebb2d88679f8.BG34PpG7Eze4l82zNuWPA9Vy
       OLLAMA_MODEL: gemma4:31b-cloud
-      NEXT_PUBLIC_VAPID_PUBLIC_KEY: PASTE_YOUR_VAPID_PUBLIC_KEY
-      VAPID_PRIVATE_KEY: PASTE_YOUR_VAPID_PRIVATE_KEY
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: BKOA6ECffh3T_Df16PHix1xtMPmh4WchYTBCFuBF5EFevnFz9ruz8SJCiCEpJu6NLSC-nrKWMab8b5xj_t7iQ7U
+      VAPID_PRIVATE_KEY: MEvlB681QkPlchTRvLtQG4rvIZT5RTsT54PvhmofvWU
       SMTP_HOST: smtp.hostinger.com
       SMTP_PORT: "465"
       SMTP_USER: update@wellnesslog.in
