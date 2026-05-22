@@ -4,10 +4,13 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare yarn@4.13.0 --activate
 
-COPY package.json yarn.lock .yarnrc.yml ./
+COPY package.json .yarnrc.yml ./
 COPY prisma ./prisma/
 
-RUN yarn install --immutable && \
+# Generate yarn.lock if missing (symlink may be broken on Windows)
+RUN test -f yarn.lock || yarn generate-lock-entry
+
+RUN yarn install && \
     yarn prisma generate
 
 # — Stage 2: Build —
