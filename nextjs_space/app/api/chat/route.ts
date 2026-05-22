@@ -5,6 +5,27 @@ import { prisma } from '@/lib/prisma';
 import { SYSTEM_PROMPT } from '@/lib/system-prompt';
 import { extractHealthData, HealthData } from '@/lib/parse-health-data';
 
+// Extract profile_update tags from assistant response
+function extractProfileUpdate(content: string): string | null {
+  const match = content.match(/<profile_update>([\s\S]*?)<\/profile_update>/i);
+  return match ? match[1].trim() : null;
+}
+
+// Save updated profile to database
+async function saveProfileUpdate(newContent: string) {
+  try {
+    let profile = await prisma.userProfile.findFirst({ orderBy: { createdAt: 'asc' } });
+    if (profile) {
+      await prisma.userProfile.update({ where: { id: profile.id }, data: { content: newContent } });
+    } else {
+      await prisma.userProfile.create({ data: { content: newContent } });
+    }
+    console.log('User profile updated');
+  } catch (e) {
+    console.error('Error saving profile update:', e);
+  }
+}
+
 // Parse timezone offset from client's ISO datetime (e.g., "2026-05-21T19:20:00.000-05:00" → "-05:00")
 function getTimezoneOffset(localDateTime: string): string {
   const match = localDateTime?.match?.(/([+-]\d{2}:\d{2})$/);
@@ -488,6 +509,17 @@ export async function POST(request: NextRequest) {
       return `${hours}:${String(minutes).padStart(2, '0')} ${ampm}`;
     }
 
+    // Load user profile for long-term memory
+    let profileContext = '';
+    try {
+      const profile = await prisma.userProfile.findFirst({ orderBy: { createdAt: 'asc' } });
+      if (profile?.content?.trim()) {
+        profileContext = `\n\nUSER PROFILE (what I know about the user):\n${profile.content}`;
+      }
+    } catch (e) {
+      // Profile may not exist yet
+    }
+
     let recentContext = '';
 
     if (recentBP?.length) {
@@ -581,7 +613,7 @@ export async function POST(request: NextRequest) {
       : { role: 'user', content: userMessage };
 
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT + timeContext + recentContext },
+      { role: 'system', content: SYSTEM_PROMPT + timeContext + recentContext + profileContext },
       ...historyMsgs,
       currentUserMsg,
     ];
@@ -630,6 +662,11 @@ export async function POST(request: NextRequest) {
                   const { cleanText, healthData } = extractHealthData(fullContent);
                   if (healthData) {
                     await saveHealthData(healthData, tzOffset);
+                  }
+                  // Process profile update from assistant response
+                  const profileUpdate = extractProfileUpdate(fullContent);
+                  if (profileUpdate) {
+                    await saveProfileUpdate(profileUpdate);
                   }
                   // Save assistant message (clean version) — include image reference if user sent one
                   await prisma.chatMessage.create({
