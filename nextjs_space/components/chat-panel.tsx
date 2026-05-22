@@ -415,28 +415,28 @@ export function ChatPanel() {
             </div>
           </div>
         )}
-        <div className="max-w-3xl mx-auto flex gap-2 items-end">
-          {/* Image buttons */}
-          <div className="flex items-end gap-1 shrink-0">
+        <div className="max-w-3xl mx-auto flex gap-2 items-stretch">
+          {/* Image buttons — stacked vertically on mobile, horizontal on desktop */}
+          <div className="flex flex-col sm:flex-row gap-1 shrink-0">
             <Button
               variant="outline"
               size="icon"
-              className="shrink-0 h-[44px] w-[44px]"
+              className="shrink-0 h-[44px] w-[48px] sm:h-full sm:w-[48px]"
               title="Attach photo"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading || isCompressing}
             >
-              <ImagePlus className="w-4 h-4" />
+              <ImagePlus className="w-5 h-5" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              className="shrink-0 h-[44px] w-[44px]"
+              className="shrink-0 h-[44px] w-[48px] sm:h-full sm:w-[48px]"
               title="Take photo"
               onClick={() => cameraInputRef.current?.click()}
               disabled={isLoading || isCompressing}
             >
-              <Camera className="w-4 h-4" />
+              <Camera className="w-5 h-5" />
             </Button>
           </div>
           <Textarea
@@ -444,17 +444,16 @@ export function ChatPanel() {
             value={input}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e?.target?.value ?? '')}
             onKeyDown={handleKeyDown}
-            placeholder={imagePreview ? 'Add a note about this photo (optional)...' : 'Tell me about your health today...'}
-            className="min-h-[52px] max-h-[140px] resize-none text-lg"
-            rows={1}
+            placeholder={imagePreview ? 'Add a note about this photo...' : 'Tell me about your health today...'}
+            className="min-h-[92px] sm:min-h-[52px] max-h-[160px] resize-none text-lg leading-relaxed"
+            rows={2}
           />
           <Button
             onClick={sendMessage}
             disabled={isLoading || (!(input?.trim?.()) && !imagePreview)}
-            size="icon"
-            className="shrink-0 h-[44px] w-[44px]"
+            className="shrink-0 h-auto w-[48px] self-stretch"
           >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </Button>
         </div>
       </div>
