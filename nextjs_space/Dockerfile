@@ -24,7 +24,8 @@ COPY . .
 ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
 ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
-RUN yarn build
+RUN npx prisma generate && \
+    yarn build
 
 # — Stage 3: Production runner —
 FROM node:22-alpine AS runner
