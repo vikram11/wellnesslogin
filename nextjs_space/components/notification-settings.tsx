@@ -53,6 +53,7 @@ export function NotificationSettings() {
   const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [remindersLoading, setRemindersLoading] = useState(false);
+  const [remindersError, setRemindersError] = useState(false);
   const [saving, setSaving] = useState<string | null>(null); // ID of reminder being saved
 
   // New custom reminder form
@@ -92,23 +93,30 @@ export function NotificationSettings() {
     init();
   }, [checkSubscription]);
 
-  // Load reminders when drawer opens
+  // Load reminders when drawer opens or push subscription becomes active
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && isSubscribed) {
       loadReminders();
     }
-  }, [isOpen]);
+  }, [isOpen, isSubscribed]);
 
   const loadReminders = async () => {
     setRemindersLoading(true);
+    setRemindersError(false);
     try {
       const res = await fetch('/api/reminders');
       if (res.ok) {
         const data = await res.json();
         setReminders(data?.reminders ?? []);
+      } else {
+        console.error('Load reminders failed:', res.status);
+        setRemindersError(true);
+        toast.error('Could not load reminders. Please try again.');
       }
     } catch (err) {
       console.error('Load reminders error:', err);
+      setRemindersError(true);
+      toast.error('Could not load reminders. Please try again.');
     }
     setRemindersLoading(false);
   };
@@ -309,6 +317,13 @@ export function NotificationSettings() {
                 {remindersLoading ? (
                   <div className="flex justify-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : remindersError ? (
+                  <div className="flex flex-col items-center gap-3 py-8 text-center">
+                    <p className="text-base text-muted-foreground">Could not load reminders</p>
+                    <Button variant="outline" size="sm" onClick={loadReminders}>
+                      Try Again
+                    </Button>
                   </div>
                 ) : (
                   <>
