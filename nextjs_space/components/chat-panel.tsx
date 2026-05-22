@@ -118,24 +118,48 @@ export function ChatPanel() {
     const trimmed = input?.trim?.() ?? '';
     if ((!trimmed && !imagePreview) || isLoading) return;
 
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: trimmed || (imagePreview ? '(photo attached)' : ''),
-      imageData: imagePreview,
-      createdAt: new Date().toISOString(),
-    };
-
-    setMessages((prev: Message[]) => [...(prev ?? []), userMsg]);
     setInput('');
     const sentImage = imagePreview;
     clearImage();
     setIsLoading(true);
 
+    // If there's an image, upload it to get a persistent file path first
+    let imagePath: string | null = null;
+    if (sentImage) {
+      try {
+        const uploadRes = await fetch('/api/upload-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageData: sentImage }),
+        });
+        if (uploadRes?.ok) {
+          const uploadData = await uploadRes.json();
+          imagePath = uploadData?.path ?? null;
+        } else {
+          console.warn('Image upload failed, falling back to base64');
+        }
+      } catch (err) {
+        console.warn('Image upload error, falling back to base64:', err);
+      }
+    }
+
+    // Use the persistent path for display, fall back to base64 preview
+    const displayImage = imagePath || sentImage;
+
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: trimmed || (sentImage ? '(photo attached)' : ''),
+      imageData: displayImage,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev: Message[]) => [...(prev ?? []), userMsg]);
+
     const assistantId = `assistant-${Date.now()}`;
     setMessages((prev: Message[]) => [
       ...(prev ?? []),
-      { id: assistantId, role: 'assistant', content: '', createdAt: new Date().toISOString() },
+      { id: assistantId, role: 'assistant', content: '', imageData: imagePath, createdAt: new Date().toISOString() },
     ]);
 
     try {
@@ -144,7 +168,8 @@ export function ChatPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmed || 'What do you see in this image?',
-          imageData: sentImage,
+          imageData: sentImage, // still send base64 for LLM vision
+          imagePath: imagePath, // send the saved file path for DB storage
           localTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
           localDateTime: (() => {
             const now = new Date();
@@ -303,13 +328,30 @@ export function ChatPanel() {
                   </div>
                 )}
                 <div className="flex flex-col gap-1 max-w-[80%]">
-                  {/* Image attachment */}
+                  {/* Image attachment — user messages show their uploaded photo */}
                   {msg?.role === 'user' && msg?.imageData && (
                     <div className="rounded-xl overflow-hidden border border-border ml-auto" style={{ maxWidth: 240 }}>
                       <div className="relative aspect-[4/3] bg-muted">
                         <Image
                           src={msg.imageData}
                           alt="Attached photo"
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {/* Image reference — assistant messages show the photo they analyzed */}
+                  {msg?.role === 'assistant' && msg?.imageData && (
+                    <div className="rounded-xl overflow-hidden border border-border/60 bg-muted/30" style={{ maxWidth: 180 }}>
+                      <div className="px-2 pt-1.5 pb-1">
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">📷 Analyzing</span>
+                      </div>
+                      <div className="relative aspect-[4/3] bg-muted">
+                        <Image
+                          src={msg.imageData}
+                          alt="Photo being analyzed"
                           fill
                           className="object-cover"
                           unoptimized

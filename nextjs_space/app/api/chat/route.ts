@@ -402,16 +402,18 @@ export async function POST(request: NextRequest) {
     const userMessage = body?.message ?? '';
     const localTime = body?.localTime ?? '';
     const localDateTime = body?.localDateTime ?? '';
-    const imageData = body?.imageData ?? null; // base64 data URL for vision
+    const imageData = body?.imageData ?? null; // base64 data URL for LLM vision
+    const imagePath = body?.imagePath ?? null; // persistent file path from upload
     const tzOffset = getTimezoneOffset(localDateTime);
 
     if (!userMessage) {
       return new Response(JSON.stringify({ error: 'Message is required' }), { status: 400 });
     }
 
-    // Save user message to chat history (with optional image)
+    // Save user message to chat history — store file path if available, else base64
+    const storedImage = imagePath || imageData || null;
     await prisma.chatMessage.create({
-      data: { role: 'user', content: userMessage, ...(imageData ? { imageData } : {}) },
+      data: { role: 'user', content: userMessage, ...(storedImage ? { imageData: storedImage } : {}) },
     });
 
     // Get recent chat history for context
@@ -517,22 +519,51 @@ export async function POST(request: NextRequest) {
       ? `\n\nThe user's current local time is ${localTime} (${localDateTime}). Use this as the default timestamp for any health data logged in this message if no specific time is mentioned. IMPORTANT: When outputting dates in the health_data JSON, always include the timezone offset (e.g., "2026-05-21T19:20:00${tzOffset || '-05:00'}"), never output bare dates without timezone info.`
       : '';
 
+    // Helper: read a stored image back to base64 data URL for LLM
+    // If it's already a data: URL, return as-is. If it's a file path, read from disk.
+    function resolveImageForLLM(stored: string): string | null {
+      if (!stored) return null;
+      if (stored.startsWith('data:')) return stored;
+      // It's a file path like /api/uploads/chat-images/xxx.jpg — read from disk
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        // Extract the relative path after /api/uploads/
+        const relPath = stored.replace(/^\/api\/uploads\//, '');
+        const fullPath = path.join(process.cwd(), 'uploads', relPath);
+        if (fs.existsSync(fullPath)) {
+          const buf = fs.readFileSync(fullPath);
+          const ext = path.extname(fullPath).slice(1).toLowerCase();
+          const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
+          return `data:${mime};base64,${buf.toString('base64')}`;
+        }
+      } catch (err) {
+        console.warn('Could not read image file for LLM:', err);
+      }
+      return null;
+    }
+
     // Build messages array — use OpenAI vision format when image is present
     // Only include images from the last 4 messages to avoid excessive token usage
     const reversed = (recentMessages ?? []).reverse();
     const historyMsgs = reversed.map((m: any, idx: number) => {
       const isRecent = idx >= reversed.length - 4;
-      if (m?.role === 'user' && m?.imageData && isRecent) {
-        return {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: m.imageData } },
-            { type: 'text', text: m?.content ?? '' },
-          ],
-        };
+      // Skip assistant imageData in history (it's just a reference thumbnail)
+      const hasImage = m?.role === 'user' && m?.imageData;
+      if (hasImage && isRecent) {
+        const imgUrl = resolveImageForLLM(m.imageData);
+        if (imgUrl) {
+          return {
+            role: 'user',
+            content: [
+              { type: 'image_url', image_url: { url: imgUrl } },
+              { type: 'text', text: m?.content ?? '' },
+            ],
+          };
+        }
       }
       // For older messages with images, just include text + note
-      if (m?.role === 'user' && m?.imageData) {
+      if (hasImage) {
         return { role: 'user', content: `[Photo was attached] ${m?.content ?? ''}` };
       }
       return { role: m?.role ?? 'user', content: m?.content ?? '' };
@@ -600,9 +631,13 @@ export async function POST(request: NextRequest) {
                   if (healthData) {
                     await saveHealthData(healthData, tzOffset);
                   }
-                  // Save assistant message (clean version)
+                  // Save assistant message (clean version) — include image reference if user sent one
                   await prisma.chatMessage.create({
-                    data: { role: 'assistant', content: cleanText },
+                    data: {
+                      role: 'assistant',
+                      content: cleanText,
+                      ...(storedImage ? { imageData: storedImage } : {}),
+                    },
                   });
                   controller.enqueue(encoder.encode('data: [DONE]\n\n'));
                   return;
@@ -629,7 +664,11 @@ export async function POST(request: NextRequest) {
               await saveHealthData(healthData, tzOffset);
             }
             await prisma.chatMessage.create({
-              data: { role: 'assistant', content: cleanText },
+              data: {
+                role: 'assistant',
+                content: cleanText,
+                ...(storedImage ? { imageData: storedImage } : {}),
+              },
             });
           }
         } catch (error: any) {
