@@ -21,7 +21,7 @@ ENV DATABASE_URL=$DATABASE_URL
 RUN rm -f yarn.lock && \
     yarn install && \
     yarn prisma generate && \
-    yarn build
+    NODE_ENV=production yarn build
 
 # — Stage 2: Production runner —
 FROM node:22-alpine AS runner
@@ -30,12 +30,14 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copy standalone server
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# Copy entire .next build
+COPY --from=builder /app/.next /app/.next
 COPY --from=builder /app/public ./public
 
-# Copy Prisma schema (for db push / db seed)
+# Copy node_modules (needed for non-standalone)
+COPY --from=builder /app/node_modules ./node_modules
+
+# Copy Prisma schema
 COPY --from=builder /app/prisma ./prisma
 
 # Copy Prisma client runtime
@@ -50,4 +52,4 @@ RUN mkdir -p node_modules/.bin && \
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["node", "node_modules/next/dist/bin/next", "start"]
