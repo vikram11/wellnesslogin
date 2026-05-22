@@ -21,6 +21,7 @@ export function PasswordGate() {
   const [error, setError] = useState('')
   const [isSetMode, setIsSetMode] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [unlocked, setUnlocked] = useState(false)
 
   useEffect(() => {
     const isSet = localStorage.getItem(PASSWORD_KEY)
@@ -32,7 +33,7 @@ export function PasswordGate() {
     setLoaded(true)
   }, [])
 
-  if (!loaded) return null
+  if (!loaded || unlocked) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -56,6 +57,7 @@ export function PasswordGate() {
       if (hash === storedHash) {
         setError('')
         setPassword('')
+        setUnlocked(true)
       } else {
         setError('Incorrect password')
         setPassword('')
