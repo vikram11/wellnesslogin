@@ -28,12 +28,12 @@ export function AppShell() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground text-sm font-bold">💚</span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground text-lg font-bold">💚</span>
             </div>
             <div>
-              <h1 className="font-display text-lg font-semibold tracking-tight">WellnessLog.in</h1>
+              <h1 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">WellnessLog.in</h1>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -52,13 +52,13 @@ export function AppShell() {
               <button
                 key={tab?.id}
                 onClick={() => setActiveTab(tab?.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-[1px] ${
+                className={`flex items-center gap-2 px-4 py-3 text-base font-medium transition-colors border-b-2 -mb-[1px] ${
                   activeTab === tab?.id
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {Icon && <Icon className="w-4 h-4" />}
+                {Icon && <Icon className="w-5 h-5" />}
                 {tab?.label}
               </button>
             );
@@ -84,13 +84,13 @@ export function AppShell() {
               <button
                 key={tab?.id}
                 onClick={() => setActiveTab(tab?.id)}
-                className={`flex flex-col items-center gap-0.5 py-2 px-3 text-xs font-medium transition-colors ${
+                className={`flex flex-col items-center gap-0.5 py-2.5 px-3 text-sm font-medium transition-colors ${
                   activeTab === tab?.id
                     ? 'text-primary'
                     : 'text-muted-foreground'
                 }`}
               >
-                {Icon && <Icon className="w-5 h-5" />}
+                {Icon && <Icon className="w-6 h-6" />}
                 {tab?.label}
               </button>
             );

@@ -118,24 +118,48 @@ export function ChatPanel() {
     const trimmed = input?.trim?.() ?? '';
     if ((!trimmed && !imagePreview) || isLoading) return;
 
-    const userMsg: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: trimmed || (imagePreview ? '(photo attached)' : ''),
-      imageData: imagePreview,
-      createdAt: new Date().toISOString(),
-    };
-
-    setMessages((prev: Message[]) => [...(prev ?? []), userMsg]);
     setInput('');
     const sentImage = imagePreview;
     clearImage();
     setIsLoading(true);
 
+    // If there's an image, upload it to get a persistent file path first
+    let imagePath: string | null = null;
+    if (sentImage) {
+      try {
+        const uploadRes = await fetch('/api/upload-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageData: sentImage }),
+        });
+        if (uploadRes?.ok) {
+          const uploadData = await uploadRes.json();
+          imagePath = uploadData?.path ?? null;
+        } else {
+          console.warn('Image upload failed, falling back to base64');
+        }
+      } catch (err) {
+        console.warn('Image upload error, falling back to base64:', err);
+      }
+    }
+
+    // Use the persistent path for display, fall back to base64 preview
+    const displayImage = imagePath || sentImage;
+
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: trimmed || (sentImage ? '(photo attached)' : ''),
+      imageData: displayImage,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev: Message[]) => [...(prev ?? []), userMsg]);
+
     const assistantId = `assistant-${Date.now()}`;
     setMessages((prev: Message[]) => [
       ...(prev ?? []),
-      { id: assistantId, role: 'assistant', content: '', createdAt: new Date().toISOString() },
+      { id: assistantId, role: 'assistant', content: '', imageData: imagePath, createdAt: new Date().toISOString() },
     ]);
 
     try {
@@ -144,7 +168,8 @@ export function ChatPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmed || 'What do you see in this image?',
-          imageData: sentImage,
+          imageData: sentImage, // still send base64 for LLM vision
+          imagePath: imagePath, // send the saved file path for DB storage
           localTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
           localDateTime: (() => {
             const now = new Date();
@@ -261,11 +286,11 @@ export function ChatPanel() {
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
               <Heart className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="font-display text-xl font-semibold tracking-tight mb-2">Hi there! 👋</h2>
-            <p className="text-muted-foreground max-w-sm text-sm">
+            <h2 className="font-display text-2xl font-semibold tracking-tight mb-2">Hi there! 👋</h2>
+            <p className="text-muted-foreground max-w-sm text-base">
               I'm your wellness companion. Tell me about blood pressure readings, medications taken, symptoms, or anything health-related and I'll keep track of it all.
             </p>
-            <p className="text-muted-foreground max-w-sm text-xs mt-2">
+            <p className="text-muted-foreground max-w-sm text-sm mt-2">
               📷 You can also snap a photo of a prescription bottle, lab report, or BP monitor!
             </p>
             <div className="mt-6 grid gap-2 w-full max-w-sm">
@@ -281,7 +306,7 @@ export function ChatPanel() {
                     setInput(suggestion);
                     textareaRef?.current?.focus?.();
                   }}
-                  className="text-left text-sm px-4 py-2.5 rounded-lg bg-card border border-border hover:bg-accent transition-colors text-foreground"
+                  className="text-left text-base px-4 py-3 rounded-lg bg-card border border-border hover:bg-accent transition-colors text-foreground"
                 >
                   {suggestion}
                 </button>
@@ -298,12 +323,12 @@ export function ChatPanel() {
                 }`}
               >
                 {msg?.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                    <Bot className="w-4 h-4 text-primary" />
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                    <Bot className="w-5 h-5 text-primary" />
                   </div>
                 )}
-                <div className="flex flex-col gap-1 max-w-[80%]">
-                  {/* Image attachment */}
+                <div className="flex flex-col gap-1 max-w-[85%]">
+                  {/* Image attachment — user messages show their uploaded photo */}
                   {msg?.role === 'user' && msg?.imageData && (
                     <div className="rounded-xl overflow-hidden border border-border ml-auto" style={{ maxWidth: 240 }}>
                       <div className="relative aspect-[4/3] bg-muted">
@@ -317,8 +342,25 @@ export function ChatPanel() {
                       </div>
                     </div>
                   )}
+                  {/* Image reference — assistant messages show the photo they analyzed */}
+                  {msg?.role === 'assistant' && msg?.imageData && (
+                    <div className="rounded-xl overflow-hidden border border-border/60 bg-muted/30" style={{ maxWidth: 180 }}>
+                      <div className="px-2 pt-1.5 pb-1">
+                        <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">📷 Analyzing</span>
+                      </div>
+                      <div className="relative aspect-[4/3] bg-muted">
+                        <Image
+                          src={msg.imageData}
+                          alt="Photo being analyzed"
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div
-                    className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                    className={`rounded-2xl px-4 py-3 text-lg sm:text-xl leading-relaxed ${
                       msg?.role === 'user'
                         ? 'bg-primary text-primary-foreground rounded-br-md'
                         : 'bg-card border border-border rounded-bl-md'
@@ -330,10 +372,10 @@ export function ChatPanel() {
                       <div className="whitespace-pre-wrap">{msg?.content ?? ''}</div>
                     )}
                     {msg?.role === 'assistant' && !msg?.content && isLoading && (
-                      <div className="flex gap-1 py-1">
-                        <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <div className="flex gap-1.5 py-1">
+                        <span className="w-2.5 h-2.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2.5 h-2.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2.5 h-2.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
                     )}
                   </div>
@@ -359,7 +401,7 @@ export function ChatPanel() {
                   <Image src={imagePreview} alt="Preview" fill className="object-cover" unoptimized />
                 </div>
               ) : null}
-              <span className="text-xs text-muted-foreground">
+              <span className="text-sm text-muted-foreground">
                 {isCompressing ? 'Processing...' : 'Photo attached'}
               </span>
               {!isCompressing && (
@@ -403,7 +445,7 @@ export function ChatPanel() {
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e?.target?.value ?? '')}
             onKeyDown={handleKeyDown}
             placeholder={imagePreview ? 'Add a note about this photo (optional)...' : 'Tell me about your health today...'}
-            className="min-h-[44px] max-h-[120px] resize-none text-sm"
+            className="min-h-[52px] max-h-[140px] resize-none text-lg"
             rows={1}
           />
           <Button
