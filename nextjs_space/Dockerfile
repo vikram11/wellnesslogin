@@ -7,7 +7,8 @@ RUN corepack enable && corepack prepare yarn@4.13.0 --activate
 COPY package.json .yarnrc.yml ./
 COPY prisma ./prisma/
 
-RUN yarn install && \
+RUN rm -f yarn.lock && \
+    yarn install && \
     yarn prisma generate
 
 # — Stage 2: Build —
@@ -17,6 +18,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare yarn@4.13.0 --activate
 
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/yarn.lock ./yarn.lock
 COPY . .
 
 ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
