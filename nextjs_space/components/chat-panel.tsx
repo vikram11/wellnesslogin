@@ -286,11 +286,11 @@ export function ChatPanel() {
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
               <Heart className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="font-display text-xl font-semibold tracking-tight mb-2">Hi there! 👋</h2>
-            <p className="text-muted-foreground max-w-sm text-sm">
+            <h2 className="font-display text-2xl font-semibold tracking-tight mb-2">Hi there! 👋</h2>
+            <p className="text-muted-foreground max-w-sm text-base">
               I'm your wellness companion. Tell me about blood pressure readings, medications taken, symptoms, or anything health-related and I'll keep track of it all.
             </p>
-            <p className="text-muted-foreground max-w-sm text-xs mt-2">
+            <p className="text-muted-foreground max-w-sm text-sm mt-2">
               📷 You can also snap a photo of a prescription bottle, lab report, or BP monitor!
             </p>
             <div className="mt-6 grid gap-2 w-full max-w-sm">
@@ -306,7 +306,7 @@ export function ChatPanel() {
                     setInput(suggestion);
                     textareaRef?.current?.focus?.();
                   }}
-                  className="text-left text-sm px-4 py-2.5 rounded-lg bg-card border border-border hover:bg-accent transition-colors text-foreground"
+                  className="text-left text-base px-4 py-3 rounded-lg bg-card border border-border hover:bg-accent transition-colors text-foreground"
                 >
                   {suggestion}
                 </button>
@@ -323,11 +323,11 @@ export function ChatPanel() {
                 }`}
               >
                 {msg?.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                    <Bot className="w-4 h-4 text-primary" />
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                    <Bot className="w-5 h-5 text-primary" />
                   </div>
                 )}
-                <div className="flex flex-col gap-1 max-w-[80%]">
+                <div className="flex flex-col gap-1 max-w-[85%]">
                   {/* Image attachment — user messages show their uploaded photo */}
                   {msg?.role === 'user' && msg?.imageData && (
                     <div className="rounded-xl overflow-hidden border border-border ml-auto" style={{ maxWidth: 240 }}>
@@ -346,7 +346,7 @@ export function ChatPanel() {
                   {msg?.role === 'assistant' && msg?.imageData && (
                     <div className="rounded-xl overflow-hidden border border-border/60 bg-muted/30" style={{ maxWidth: 180 }}>
                       <div className="px-2 pt-1.5 pb-1">
-                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">📷 Analyzing</span>
+                        <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">📷 Analyzing</span>
                       </div>
                       <div className="relative aspect-[4/3] bg-muted">
                         <Image
@@ -360,7 +360,7 @@ export function ChatPanel() {
                     </div>
                   )}
                   <div
-                    className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                    className={`rounded-2xl px-4 py-3 text-lg sm:text-xl leading-relaxed ${
                       msg?.role === 'user'
                         ? 'bg-primary text-primary-foreground rounded-br-md'
                         : 'bg-card border border-border rounded-bl-md'
@@ -372,10 +372,10 @@ export function ChatPanel() {
                       <div className="whitespace-pre-wrap">{msg?.content ?? ''}</div>
                     )}
                     {msg?.role === 'assistant' && !msg?.content && isLoading && (
-                      <div className="flex gap-1 py-1">
-                        <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <div className="flex gap-1.5 py-1">
+                        <span className="w-2.5 h-2.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2.5 h-2.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2.5 h-2.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
                     )}
                   </div>
@@ -401,7 +401,7 @@ export function ChatPanel() {
                   <Image src={imagePreview} alt="Preview" fill className="object-cover" unoptimized />
                 </div>
               ) : null}
-              <span className="text-xs text-muted-foreground">
+              <span className="text-sm text-muted-foreground">
                 {isCompressing ? 'Processing...' : 'Photo attached'}
               </span>
               {!isCompressing && (
@@ -445,7 +445,7 @@ export function ChatPanel() {
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e?.target?.value ?? '')}
             onKeyDown={handleKeyDown}
             placeholder={imagePreview ? 'Add a note about this photo (optional)...' : 'Tell me about your health today...'}
-            className="min-h-[44px] max-h-[120px] resize-none text-sm"
+            className="min-h-[52px] max-h-[140px] resize-none text-lg"
             rows={1}
           />
           <Button
