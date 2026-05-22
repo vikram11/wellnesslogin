@@ -44,11 +44,8 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Copy Prisma CLI
+# Copy Prisma CLI (already has .bin/prisma from builder)
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-RUN mkdir -p node_modules/.bin && \
-    ln -s ../prisma/build/index.js node_modules/.bin/prisma && \
-    chmod +x node_modules/.bin/prisma
 
 EXPOSE 3000
 
