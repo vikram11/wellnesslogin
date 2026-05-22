@@ -93,19 +93,6 @@ model SavedRecipient {
   @@index([email])
 }
 
-model ReminderSchedule {
-  id          String    @id @default(cuid())
-  label       String    // e.g. "AM Meds", "PT Exercises", "Take BP Reading"
-  time        String    // HH:MM in 24h format, Central time
-  enabled     Boolean   @default(true)
-  isDefault   Boolean   @default(false) // true for the 3 built-in AM/MID/PM reminders
-  lastFiredAt DateTime? // prevents double-firing within same window
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  @@index([enabled])
-}
-
 model ChatMessage {
   id        String   @id @default(cuid())
   role      String   // user or assistant
