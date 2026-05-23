@@ -113,8 +113,10 @@ model ChatMessage {
 model DailyEmailSchedule {
   id          String   @id @default(cuid())
   enabled     Boolean  @default(false)
-  sendTime    String   @default("08:00") // HH:MM format in America/Chicago timezone
-  recipientIds String   // JSON array of saved recipient IDs
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  sendTime    String   @default("08:00") @map("send_time") // HH:MM format in America/Chicago timezone
+  recipientIds String   @map("recipient_ids") // JSON array of saved recipient IDs
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("DailyEmailSchedule")
 }
