@@ -110,6 +110,19 @@ model ChatMessage {
   @@index([createdAt])
 }
 
+model Notification {
+  id          String   @id @default(cuid())
+  label       String   // e.g. "Take Morning Medications", "PT Exercises"
+  time        String   // HH:MM format
+  type        String   @default("custom") // "morning_meds" | "midday_meds" | "evening_meds" | "custom"
+  enabled     Boolean  @default(true)
+  daysOfWeek  String   @default("[1,2,3,4,5,6,7]") @map("days_of_week") // JSON array: 1=Mon..7=Sun
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("Notification")
+}
+
 model DailyEmailSchedule {
   id          String   @id @default(cuid())
   enabled     Boolean  @default(false)

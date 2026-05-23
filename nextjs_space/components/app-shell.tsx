@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { MessageSquare, BarChart3, History, Pill, Mail } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { MessageSquare, BarChart3, History, Pill, Mail, Bell } from 'lucide-react';
 import { ChatPanel } from '@/components/chat-panel';
 import { ReportsPanel } from '@/components/reports-panel';
 import { HistoryPanel } from '@/components/history-panel';
 import { MedicationsPanel } from '@/components/medications-panel';
 import { EmailPanel } from '@/components/email-panel';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { NotificationToggle } from '@/components/notification-toggle';
+import { NotificationDrawer } from '@/components/notification-drawer';
 
 const tabs = [
   { id: 'chat', label: 'Chat', icon: MessageSquare },
@@ -22,6 +22,9 @@ type TabId = typeof tabs[number]['id'];
 
 export function AppShell() {
   const [activeTab, setActiveTab] = useState<TabId>('chat');
+  const [notifDrawerOpen, setNotifDrawerOpen] = useState(false);
+  const openNotifDrawer = useCallback(() => setNotifDrawerOpen(true), []);
+  const closeNotifDrawer = useCallback(() => setNotifDrawerOpen(false), []);
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -37,7 +40,13 @@ export function AppShell() {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <NotificationToggle />
+            <button
+              onClick={openNotifDrawer}
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
+              title="Notification Settings"
+            >
+              <Bell className="w-5 h-5 text-muted-foreground" />
+            </button>
             <ThemeToggle />
           </div>
         </div>
@@ -97,6 +106,8 @@ export function AppShell() {
           }) ?? []}
         </div>
       </nav>
+
+      <NotificationDrawer open={notifDrawerOpen} onClose={closeNotifDrawer} />
     </div>
   );
 }
