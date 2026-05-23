@@ -39,29 +39,24 @@ export async function GET() {
       return NextResponse.json({ success: true, message: 'No recipients configured' });
     }
 
-    // Get yesterday's data (daily summary)
+    // Get today's data up to now (not yesterday)
     const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const startOfDay = new Date(yesterday);
+    const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(yesterday);
-    endOfDay.setHours(23, 59, 59, 999);
 
-    // Gather data for yesterday
+    // Gather data for today so far
     const readings = await prisma.bpReading.findMany({
-      where: { date: { gte: startOfDay, lte: endOfDay } },
+      where: { date: { gte: startOfDay } },
       orderBy: { date: 'asc' },
     });
 
     const medLogs = await prisma.medicationLog.findMany({
-      where: { date: { gte: startOfDay, lte: endOfDay } },
+      where: { date: { gte: startOfDay } },
       orderBy: { date: 'desc' },
     });
 
     const notes = await prisma.dailyNote.findMany({
-      where: { date: { gte: startOfDay, lte: endOfDay } },
+      where: { date: { gte: startOfDay } },
       orderBy: { date: 'desc' },
     });
 
@@ -189,7 +184,7 @@ export async function GET() {
       <div style="font-family:Arial,sans-serif;max-width:650px;margin:0 auto;color:#1a1a2e;">
         <div style="background:#0d9488;padding:20px 24px;border-radius:8px 8px 0 0;">
           <h1 style="color:white;margin:0;font-size:22px;">💚 Daily Wellness Summary</h1>
-          <p style="color:#ccfbf1;margin:6px 0 0;font-size:14px;">Date: ${fmtDate(yesterday)}</p>
+          <p style="color:#ccfbf1;margin:6px 0 0;font-size:14px;">Date: ${fmtDate(now)}</p>
         </div>
 
         <div style="padding:24px;background:#f8fffe;border:1px solid #e0f2f1;">
@@ -205,7 +200,7 @@ export async function GET() {
               <th style="padding:8px;text-align:left;">Context</th>
             </tr></thead>
             <tbody>${bpRows}</tbody>
-          </table>` : '<p style="color:#888;">No BP readings for this day.</p>'}
+          </table>` : '<p style="color:#888;">No BP readings today yet.</p>'}
 
           ${(notes?.length ?? 0) > 0 ? `
           <h2 style="color:#0d9488;font-size:18px;">📝 Notes</h2>
@@ -222,11 +217,11 @@ export async function GET() {
               <th style="padding:8px;text-align:left;">Notes</th>
             </tr></thead>
             <tbody>${medsRows}</tbody>
-          </table>` : '<p style="color:#888;">No medication logs for this day.</p>'}
+          </table>` : '<p style="color:#888;">No medication logs today yet.</p>'}
         </div>
 
         <div style="padding:16px 24px;background:#e0f2f1;border-radius:0 0 8px 8px;font-size:12px;color:#555;">
-          Generated automatically by WellnessLog.in · ${fmtDateShort(new Date())} ${fmtTime(new Date())} ${TZ}
+          Generated automatically by WellnessLog.in · ${fmtDateShort(now)} ${fmtTime(now)} ${TZ}
         </div>
       </div>
     `;
@@ -254,12 +249,12 @@ export async function GET() {
 
     // Send to all recipients
     const results = await Promise.all(
-      recipients.map(async (recipient) => {
+      recipients.map(async (recipient: any) => {
         try {
           await transporter.sendMail({
             from: emailFrom,
             to: recipient.email,
-            subject: `Daily Wellness Summary — ${fmtDateShort(yesterday)}`,
+            subject: `Daily Wellness Summary — ${fmtDateShort(now)}`,
             html: htmlBody,
           });
           return { email: recipient.email, success: true };
@@ -270,7 +265,7 @@ export async function GET() {
       })
     );
 
-    const sentCount = results.filter(r => r.success).length;
+    const sentCount = results.filter((r: any) => r.success).length;
     return NextResponse.json({
       success: true,
       message: `Sent to ${sentCount}/${recipients.length} recipients`,
