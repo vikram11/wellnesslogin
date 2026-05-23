@@ -17,6 +17,8 @@ COPY next.config.js next-env.d.ts tailwind.config.ts tsconfig.json postcss.confi
 
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
 RUN rm -f yarn.lock && \
     yarn install && \
