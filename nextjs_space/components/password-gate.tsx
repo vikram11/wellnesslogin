@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 
 const PASSWORD_KEY = 'wellnesslog_password_set'
 const PASSWORD_HASH_KEY = 'wellnesslog_password_hash'
+const TRUSTED_DEVICE_KEY = 'wellnesslog_trusted_device'
 
 // Simple hash function (not cryptographically secure, just for basic obfuscation)
 function simpleHash(str: string): string {
@@ -24,6 +25,13 @@ export function PasswordGate() {
   const [unlocked, setUnlocked] = useState(false)
 
   useEffect(() => {
+    // Check if this device is already trusted (unlocked before)
+    const trusted = localStorage.getItem(TRUSTED_DEVICE_KEY)
+    if (trusted === 'true') {
+      setUnlocked(true)
+      setLoaded(true)
+      return
+    }
     const isSet = localStorage.getItem(PASSWORD_KEY)
     if (isSet) {
       setIsSetMode(false)
@@ -57,6 +65,8 @@ export function PasswordGate() {
       if (hash === storedHash) {
         setError('')
         setPassword('')
+        // Mark this device as trusted so it won't ask again
+        localStorage.setItem(TRUSTED_DEVICE_KEY, 'true')
         setUnlocked(true)
       } else {
         setError('Incorrect password')
