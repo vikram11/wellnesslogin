@@ -82,26 +82,22 @@ echo "  docker-compose.yml written."
 echo "[5/8] Creating Docker network 'caddy_network'..."
 docker network create caddy_network 2>/dev/null || echo "  Network already exists."
 
-# ---------- 6. Set up Caddy reverse proxy ----------
-echo "[6/8] Setting up Caddy reverse proxy..."
-if ! docker ps --format '{{.Names}}' | grep -q caddy; then
-  cat > "$DEPLOY_PATH/Caddyfile" << 'CADDYFILE'
-wellnesslog.in {
-    reverse_proxy app:3000
-}
-CADDYFILE
+# ---------- 6. Set up Caddy reverse proxy (auto-proxy) ----------
+echo "[6/8] Setting up Caddy reverse proxy (lucaslorentz/caddy-docker-proxy)..."
+mkdir -p /docker/caddy/caddy_data /docker/caddy/caddy_config
 
+if ! docker ps --format '{{.Names}}' | grep -q caddy-proxy; then
   docker run -d \
-    --name caddy \
+    --name caddy-proxy \
     --restart unless-stopped \
     --network caddy_network \
     -p 80:80 \
     -p 443:443 \
-    -v "$DEPLOY_PATH/Caddyfile:/etc/caddy/Caddyfile" \
-    -v caddy_data:/data \
-    -v caddy_config:/config \
-    caddy:2
-  echo "  Caddy container started."
+    -v /var/run/docker.sock:/var/run/docker.sock:ro \
+    -v /docker/caddy/caddy_data:/data \
+    -v /docker/caddy/caddy_config:/config \
+    lucaslorentz/caddy-docker-proxy:ci-alpine
+  echo "  Caddy container (caddy-proxy) started."
 else
   echo "  Caddy already running."
 fi
