@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Bell, BellOff, Clock, Plus, Trash2, X, Loader2, Pencil } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Bell, BellOff, Clock, Plus, Trash2, X, Loader2, Pencil, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePushManager } from '@/hooks/use-push-manager';
 
 interface Notification {
   id: string;
@@ -29,6 +30,7 @@ function formatTime12(time24: string): string {
 }
 
 export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
+  const { isSupported, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushManager();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -226,6 +228,58 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
             </div>
           ) : (
             <>
+              {/* Push Subscription Card */}
+              {isSupported && (
+                <div className="rounded-xl border border-border p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Smartphone className="w-5 h-5 text-primary shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium">Push Notifications</p>
+                        <p className="text-xs text-muted-foreground">
+                          {isSubscribed
+                            ? 'This device receives push alerts'
+                            : 'Allow notifications on this device'}
+                        </p>
+                      </div>
+                    </div>
+                    {isSubscribed ? (
+                      <button
+                        onClick={async () => {
+                          const ok = await unsubscribe();
+                          if (ok) toast.success('Push notifications disabled');
+                          else toast.error('Could not unsubscribe');
+                        }}
+                        disabled={pushLoading}
+                        className="px-3 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50"
+                      >
+                        {pushLoading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          'Disable'
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          const ok = await subscribe();
+                          if (ok) toast.success('Push notifications enabled!');
+                          else toast.error('Permission denied or push not available');
+                        }}
+                        disabled={pushLoading}
+                        className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      >
+                        {pushLoading ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          'Enable'
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {notifications.map((notif) => (
                 <div
                   key={notif.id}

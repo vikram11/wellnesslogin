@@ -1,2 +1,0 @@
-console.log('NEXT_PUBLIC_VAPID_PUBLIC_KEY:', process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ? 'SET (' + process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY.substring(0,10) + '...)' : 'MISSING');
-console.log('VAPID_PRIVATE_KEY:', process.env.VAPID_PRIVATE_KEY ? 'SET' : 'MISSING');
